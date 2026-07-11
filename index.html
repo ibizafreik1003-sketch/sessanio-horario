@@ -190,6 +190,62 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 <div class="toast" id="toast"></div>
 
 <script>
+// ── FIREBASE ──
+const FB_CFG={apiKey:"AIzaSyCny4LH_Jn98S7_Fu414HBqiTqZl5wYWIc",authDomain:"horarios-sessanio-v7.firebaseapp.com",projectId:"horarios-sessanio-v7",storageBucket:"horarios-sessanio-v7.firebasestorage.app",messagingSenderId:"784759066547",appId:"1:784759066547:web:472931d61c076a03e9c5c6"};
+let db=null;
+
+async function fbLoad(){
+  try{
+    const{initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const{getFirestore,doc,collection,getDocs,setDoc,deleteDoc,onSnapshot,writeBatch}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    db=getFirestore(initializeApp(FB_CFG));
+    window._fs={doc,collection,getDocs,setDoc,deleteDoc,onSnapshot,writeBatch};
+    // Load employees
+    const es=await getDocs(collection(db,'employees'));
+    if(!es.empty){
+      E=es.docs.map(d=>({id:d.id,...d.data()}));
+      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
+    }else{
+      // seed defaults
+      const b=writeBatch(db);
+      E.forEach(e=>b.set(doc(db,'employees',e.id),e));
+      await b.commit();
+    }
+    // Load schedules
+    const cols=await getDocs(collection(db,'weeks'));
+    cols.forEach(d=>{schedules[d.id]=d.data().data||{};});
+    // Realtime listeners
+    onSnapshot(collection(db,'employees'),sn=>{
+      E=sn.docs.map(d=>({id:d.id,...d.data()}));
+      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
+      rc();
+    });
+    onSnapshot(collection(db,'weeks'),sn=>{
+      sn.forEach(d=>{schedules[d.id]=d.data().data||{};});
+      rc();
+    });
+    $('sdot').style.background='#4CAF50';
+    rc();
+  }catch(err){
+    console.warn('Firebase error:',err);
+    $('sdot').style.background='#C0392B';
+    rc();
+  }
+}
+
+async function fbSaveEmp(emp){
+  if(!db)return;const{doc,setDoc}=window._fs;
+  try{await setDoc(doc(db,'employees',String(emp.id)),emp);}catch(e){console.warn(e);}
+}
+async function fbDelEmp(id){
+  if(!db)return;const{doc,deleteDoc}=window._fs;
+  try{await deleteDoc(doc(db,'employees',String(id)));}catch(e){console.warn(e);}
+}
+async function fbSaveSch(wkk){
+  if(!db)return;const{doc,setDoc}=window._fs;
+  try{await setDoc(doc(db,'weeks',wkk),{data:schedules[wkk]||{}});}catch(e){console.warn(e);}
+}
+
 // ── CONSTANTS ──
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -362,6 +418,7 @@ function applyShift(val){
   if(!undoStack[k])undoStack[k]=JSON.parse(JSON.stringify(sch));
   sch[emp.name][pCtx.di]=val;
   cm('picker');rH();
+  fbSaveSch(k);
   toast(`✅ ${emp.name} — ${DAYS[pCtx.di]}: ${sl(val)}`);
 }
 function undoGen(){
@@ -389,7 +446,7 @@ function autoGen(){
       return pool[Math.floor(Math.random()*pool.length)];
     });
   });
-  rH();toast('✨ Horario generado · Puedes deshacer');
+  rH();fbSaveSch(k);toast('✨ Horario generado · Puedes deshacer');
 }
 
 // ── COPIAR SEMANA ──
@@ -558,11 +615,11 @@ function saveEmp(){
     const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
     Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes});
     if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];}});}
-    toast(`✅ ${name} actualizado`);
+    await fbSaveEmp(e);toast(`✅ ${name} actualizado`);
   }else{
     const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:COLORS[E.length%COLORS.length],order:E.length};
     E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
-    toast(`✅ ${name} agregado`);
+    await fbSaveEmp(nc);toast(`✅ ${name} agregado`);
   }
   cm('mo-emp');rc();
 }
@@ -592,7 +649,7 @@ $('del-emp-btn').addEventListener('click',()=>{
 $('cfm-confirm').addEventListener('click',()=>{
   if(!delId){cm('cfm');return;}const e=E.find(x=>x.id===delId);if(!e){cm('cfm');return;}
   const n=e.name;Object.keys(schedules).forEach(k=>{delete schedules[k][n];});
-  E=E.filter(x=>x.id!==delId);delId=null;cm('cfm');cm('mo-emp');rc();toast(`🗑 ${n} eliminado`);
+  E=E.filter(x=>x.id!==delId);await fbDelEmp(delId);delId=null;cm('cfm');cm('mo-emp');rc();toast(`🗑 ${n} eliminado`);
 });
 $('eftipo').addEventListener('change',toggleTipo);
 document.querySelectorAll('.role-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -612,7 +669,8 @@ document.querySelectorAll('.mo,.picker,.cfm').forEach(m=>m.addEventListener('cli
 
 // ── INIT ──
 tick();setInterval(tick,60000);
-gv(0);
+$('sdot').style.background='#E8A030'; // syncing
+fbLoad().then(()=>gv(0)).catch(()=>gv(0));
 </script>
 </body>
 </html>
