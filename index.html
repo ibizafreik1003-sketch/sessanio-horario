@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Sessanio — Gestión de Personal</title>
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--td:#3D7A6E;--tb:#EAF5F3;--tl:#8ECDC4;--go:#D4891A;--gl:#E8A030;--bg:#F4F8F7;--wh:#fff;--tx:#1A2E2A;--mu:#5A7A74;--da:#C0392B;--dl:#FDECEA;--rd:10px;}
@@ -13,7 +16,7 @@ nav{background:var(--td);padding:10px 16px;display:flex;align-items:center;justi
 .logo{width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--td);font-size:.95rem;}
 .brand{color:#fff;font-size:.92rem;font-weight:800;}
 .brands{color:rgba(255,255,255,.55);font-size:.58rem;letter-spacing:1px;text-transform:uppercase;}
-.sdot{width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-left:6px;display:inline-block;}
+.sdot{width:8px;height:8px;border-radius:50%;background:#E8A030;margin-left:6px;display:inline-block;transition:.3s;}
 #clk{color:rgba(255,255,255,.55);font-size:.63rem;}
 .tabs{background:var(--td);display:flex;overflow-x:auto;scrollbar-width:none;border-top:1px solid rgba(255,255,255,.1);}
 .tabs::-webkit-scrollbar{display:none;}
@@ -69,7 +72,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 .nr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--tb);}.nr:last-child{border:none;}
 .nl{font-size:.76rem;font-weight:600;}.nv{font-size:.8rem;font-weight:800;color:var(--td);}.ns{font-size:.63rem;color:var(--mu);}
 .ntot{background:var(--td);border-radius:10px;padding:12px;color:#fff;margin-top:8px;display:flex;justify-content:space-between;align-items:center;}.ntot .t{font-size:1.1rem;font-weight:800;}
-.pg-wrap{background:rgba(255,255,255,.2);border-radius:20px;height:5px;overflow:hidden;margin:5px 0;}.pg-bar{height:100%;background:var(--gl);border-radius:20px;transition:width .5s;}
 .nov{background:#FFF8E1;border-left:3px solid var(--go);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:.73rem;color:#6B4A00;}
 .badge{padding:2px 8px;border-radius:20px;font-size:.63rem;font-weight:600;}.bok{background:#D4EDDA;color:#155724;}.bpnd{background:#FFF3CD;color:#856404;}
 .cfm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}.cfm.on{display:flex;}
@@ -115,7 +117,7 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
     <div style="font-size:.7rem;font-weight:700;color:var(--mu);margin-bottom:5px;">Horario exacto:</div>
     <div class="pcust">
       <input type="time" class="fi" id="pke" value="08:00">
-      <span style="color:var(--mu);font-size:.78rem;">a</span>
+      <span style="color:var(--mu);">a</span>
       <input type="time" class="fi" id="pks" value="14:00">
       <button class="btn bp" id="apply-custom" style="width:auto;padding:8px 11px;">✓</button>
     </div>
@@ -190,61 +192,16 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 <div class="toast" id="toast"></div>
 
 <script>
-// ── FIREBASE ──
-const FB_CFG={apiKey:"AIzaSyCny4LH_Jn98S7_Fu414HBqiTqZl5wYWIc",authDomain:"horarios-sessanio-v7.firebaseapp.com",projectId:"horarios-sessanio-v7",storageBucket:"horarios-sessanio-v7.firebasestorage.app",messagingSenderId:"784759066547",appId:"1:784759066547:web:472931d61c076a03e9c5c6"};
-let db=null;
-
-async function fbLoad(){
-  try{
-    const{initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const{getFirestore,doc,collection,getDocs,setDoc,deleteDoc,onSnapshot,writeBatch}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    db=getFirestore(initializeApp(FB_CFG));
-    window._fs={doc,collection,getDocs,setDoc,deleteDoc,onSnapshot,writeBatch};
-    // Load employees
-    const es=await getDocs(collection(db,'employees'));
-    if(!es.empty){
-      E=es.docs.map(d=>({id:d.id,...d.data()}));
-      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
-    }else{
-      // seed defaults
-      const b=writeBatch(db);
-      E.forEach(e=>b.set(doc(db,'employees',e.id),e));
-      await b.commit();
-    }
-    // Load schedules
-    const cols=await getDocs(collection(db,'weeks'));
-    cols.forEach(d=>{schedules[d.id]=d.data().data||{};});
-    // Realtime listeners
-    onSnapshot(collection(db,'employees'),sn=>{
-      E=sn.docs.map(d=>({id:d.id,...d.data()}));
-      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
-      rc();
-    });
-    onSnapshot(collection(db,'weeks'),sn=>{
-      sn.forEach(d=>{schedules[d.id]=d.data().data||{};});
-      rc();
-    });
-    $('sdot').style.background='#4CAF50';
-    rc();
-  }catch(err){
-    console.warn('Firebase error:',err);
-    $('sdot').style.background='#C0392B';
-    rc();
-  }
-}
-
-async function fbSaveEmp(emp){
-  if(!db)return;const{doc,setDoc}=window._fs;
-  try{await setDoc(doc(db,'employees',String(emp.id)),emp);}catch(e){console.warn(e);}
-}
-async function fbDelEmp(id){
-  if(!db)return;const{doc,deleteDoc}=window._fs;
-  try{await deleteDoc(doc(db,'employees',String(id)));}catch(e){console.warn(e);}
-}
-async function fbSaveSch(wkk){
-  if(!db)return;const{doc,setDoc}=window._fs;
-  try{await setDoc(doc(db,'weeks',wkk),{data:schedules[wkk]||{}});}catch(e){console.warn(e);}
-}
+// ── FIREBASE INIT ──
+firebase.initializeApp({
+  apiKey:"AIzaSyCny4LH_Jn98S7_Fu414HBqiTqZl5wYWIc",
+  authDomain:"horarios-sessanio-v7.firebaseapp.com",
+  projectId:"horarios-sessanio-v7",
+  storageBucket:"horarios-sessanio-v7.firebasestorage.app",
+  messagingSenderId:"784759066547",
+  appId:"1:784759066547:web:472931d61c076a03e9c5c6"
+});
+const db = firebase.firestore();
 
 // ── CONSTANTS ──
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -254,9 +211,7 @@ const RCSS={Mesera:'rm',Barista:'rb',Cajera:'rc2',Cocinera:'rco',Aux:'ra'};
 const RLBL={Mesera:'Mesero/a',Barista:'Barista',Cajera:'Cajero/a',Cocinera:'Cocina',Aux:'Aux.'};
 const PS=[{v:'DESCANSO',l:'💤 Descanso'},{v:'8:00-14:00',l:'🌅 Mañana (8-2)'},{v:'14:00-20:00',l:'🌙 Tarde (2-8)'},{v:'8:00-20:00',l:'⏰ Completo'},{v:'16:30-20:00',l:'🌆 Tarde corta'},{v:'9:00-15:00',l:'☀️ Mediodía'},{v:'-',l:'— Sin asignar'}];
 const SMMLV=1300000,AUX_T=162000;
-
-// ── STATE ──
-let E=[
+const DEFAULT_E=[
   {id:'1',name:'Sisley',roles:['Mesera'],tipo:'fijo',sal:1300000,vh:6000,pref:'Mañana',color:'#3D7A6E',notes:'',order:0},
   {id:'2',name:'Yorgelis',roles:['Mesera'],tipo:'fijo',sal:1300000,vh:6000,pref:'Tarde',color:'#D4891A',notes:'',order:1},
   {id:'3',name:'Martha',roles:['Cajera'],tipo:'fijo',sal:1300000,vh:6000,pref:'Tarde',color:'#2A6EA6',notes:'',order:2},
@@ -264,9 +219,11 @@ let E=[
   {id:'5',name:'Daniela',roles:['Cocinera'],tipo:'fijo',sal:1500000,vh:6000,pref:'Mañana',color:'#A06020',notes:'',order:4},
   {id:'6',name:'Alejandro',roles:['Aux'],tipo:'hora',sal:1200000,vh:5500,pref:'Flexible',color:'#8A6A30',notes:'',order:5},
 ];
+
+// ── STATE ──
+let E=[...DEFAULT_E];
 let schedules={};
-let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1;
-let undoStack={};
+let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={};
 
 // ── UTILS ──
 const $=id=>document.getElementById(id);
@@ -276,6 +233,7 @@ const om=id=>$(id).classList.add('on');
 const cm=id=>$(id).classList.remove('on');
 const f$=n=>'$'+Math.round(n).toLocaleString('es-CO');
 const sortedE=()=>[...E].sort((a,b)=>(a.order||0)-(b.order||0));
+const sd=c=>$('sdot').style.background=c;
 
 function wkKey(off=0){
   const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
@@ -309,6 +267,54 @@ function toggleTipo(){
   $('efvh-w').style.display=t==='hora'?'block':'none';
 }
 
+// ── FIREBASE OPS ──
+function fbSaveEmp(emp){
+  sd('#E8A030');
+  db.collection('employees').doc(String(emp.id)).set(emp)
+    .then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});
+}
+function fbDelEmp(id){
+  db.collection('employees').doc(String(id)).delete()
+    .then(()=>sd('#4CAF50')).catch(e=>console.warn(e));
+}
+function fbSaveSch(wkk){
+  sd('#E8A030');
+  db.collection('weeks').doc(wkk).set({data:schedules[wkk]||{}})
+    .then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});
+}
+
+// ── FIREBASE LOAD ──
+function fbInit(){
+  sd('#E8A030');
+  db.collection('employees').get().then(snap=>{
+    if(!snap.empty){
+      E=snap.docs.map(d=>({id:d.id,...d.data()}));
+      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
+    } else {
+      DEFAULT_E.forEach(e=>fbSaveEmp(e));
+    }
+    return db.collection('weeks').get();
+  }).then(snap=>{
+    snap.forEach(d=>{schedules[d.id]=d.data().data||{};});
+    // realtime
+    db.collection('employees').onSnapshot(sn=>{
+      E=sn.docs.map(d=>({id:d.id,...d.data()}));
+      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
+      rc();
+    });
+    db.collection('weeks').onSnapshot(sn=>{
+      sn.forEach(d=>{schedules[d.id]=d.data().data||{};});
+      rc();
+    });
+    sd('#4CAF50');
+    gv(0);
+  }).catch(err=>{
+    console.warn('Firebase error:',err);
+    sd('#C0392B');
+    gv(0);
+  });
+}
+
 // ── NAV ──
 function gv(i){
   curTab=i;
@@ -329,8 +335,8 @@ function rE(){
     h+=`<div class="card" style="padding:11px;">
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="ordb">
-          <button class="ordbt" data-move="${e.id},-1" ${idx===0?'disabled':''}>↑</button>
-          <button class="ordbt" data-move="${e.id},1" ${idx===se.length-1?'disabled':''}>↓</button>
+          <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
+          <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===se.length-1?'disabled':''}>↓</button>
         </div>
         <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
         <div style="flex:1;">
@@ -346,16 +352,13 @@ function rE(){
   document.querySelectorAll('.edit-emp-btn').forEach(btn=>btn.addEventListener('click',()=>openEmpModal(btn.dataset.id)));
   document.querySelectorAll('.ordbt').forEach(btn=>btn.addEventListener('click',()=>{
     if(btn.disabled)return;
-    const[id,dir]=btn.dataset.move.split(',');
-    moveEmp(id,+dir);
+    const se2=sortedE();const idx=se2.findIndex(e=>e.id===btn.dataset.id);
+    const dir=+btn.dataset.dir;const ni=idx+dir;if(ni<0||ni>=se2.length)return;
+    const ao=se2[idx].order||idx,bo=se2[ni].order||ni;
+    se2[idx].order=bo;se2[ni].order=ao;
+    fbSaveEmp(se2[idx]);fbSaveEmp(se2[ni]);
+    rE();
   }));
-}
-function moveEmp(id,dir){
-  const se=sortedE();const idx=se.findIndex(e=>e.id===id);if(idx<0)return;
-  const ni=idx+dir;if(ni<0||ni>=se.length)return;
-  const ao=se[idx].order||idx,bo=se[ni].order||ni;
-  se[idx].order=bo;se[ni].order=ao;
-  rE();
 }
 
 // ── HORARIOS ──
@@ -386,10 +389,9 @@ function rH(){
     <button class="btn bs" id="copy-week-btn" style="flex:1;">📋 Copiar semana</button>
     <button class="btn bg2" id="print-btn" style="flex:1;">🖨️ Imprimir</button>
   </div>
-  ${hasUndo?`<button class="btn bo" id="undo-btn" style="width:100%;margin-bottom:10px;">↩ Deshacer último cambio</button>`:''}
+  ${hasUndo?`<button class="btn bo" id="undo-btn" style="width:100%;margin-bottom:10px;">↩ Deshacer</button>`:''}
   <div class="sw"><table class="st2"><thead>${th}</thead><tbody>${tb}</tbody></table></div>
-  <div style="font-size:.68rem;color:var(--mu);margin-top:8px;padding:8px;background:#fff;border-radius:8px;">💡 Toca una celda para editar el turno</div>`;
-
+  <div style="font-size:.68rem;color:var(--mu);margin-top:8px;padding:8px;background:#fff;border-radius:8px;">💡 Toca una celda para editar · Cambios guardados automáticamente</div>`;
   $('wk-prev').addEventListener('click',()=>{wk--;rH();});
   $('wk-next').addEventListener('click',()=>{wk++;rH();});
   $('auto-gen-btn').addEventListener('click',autoGen);
@@ -403,7 +405,7 @@ function rH(){
 function openPicker(eid,di){
   pCtx={eid,di};const emp=E.find(e=>e.id===eid);if(!emp)return;
   const cur=(curSch()[emp.name]||[])[di]||'-';
-  $('ptitle').textContent=`${emp.name} — ${DAYS[di]}`;
+  $('ptitle').textContent=emp.name+' — '+DAYS[di];
   $('popts').innerHTML=PS.map(o=>`<div class="popt${o.v===cur?' sel':''}" data-val="${o.v}">${o.l}</div>`).join('');
   document.querySelectorAll('.popt').forEach(el=>el.addEventListener('click',()=>{
     document.querySelectorAll('.popt').forEach(x=>x.classList.remove('sel'));
@@ -417,14 +419,13 @@ function applyShift(val){
   if(!sch[emp.name])sch[emp.name]=Array(7).fill('-');
   if(!undoStack[k])undoStack[k]=JSON.parse(JSON.stringify(sch));
   sch[emp.name][pCtx.di]=val;
-  cm('picker');rH();
-  fbSaveSch(k);
-  toast(`✅ ${emp.name} — ${DAYS[pCtx.di]}: ${sl(val)}`);
+  cm('picker');fbSaveSch(k);rH();
+  toast('✅ '+emp.name+' — '+DAYS[pCtx.di]+': '+sl(val));
 }
 function undoGen(){
   const k=wkKey();if(!undoStack[k]){toast('⚠️ No hay cambio para deshacer');return;}
   schedules[k]=JSON.parse(JSON.stringify(undoStack[k]));
-  delete undoStack[k];rH();toast('↩ Horario restaurado');
+  delete undoStack[k];fbSaveSch(k);rH();toast('↩ Horario restaurado');
 }
 function autoGen(){
   const k=wkKey();const sch=curSch();
@@ -446,7 +447,7 @@ function autoGen(){
       return pool[Math.floor(Math.random()*pool.length)];
     });
   });
-  rH();fbSaveSch(k);toast('✨ Horario generado · Puedes deshacer');
+  fbSaveSch(k);rH();toast('✨ Horario generado');
 }
 
 // ── COPIAR SEMANA ──
@@ -468,7 +469,7 @@ function printH(){
     tb+=`<tr style="background:${idx%2===0?'#fff':'#EAF5F3'};"><td style="padding:8px;font-weight:700;">${emp.name}<br><small style="color:#666;">${(emp.roles||[]).map(r=>RLBL[r]||r).join(', ')}</small></td>${sh.map(s=>`<td style="padding:8px;text-align:center;font-size:.82rem;">${sl(s)}</td>`).join('')}<td style="padding:8px;text-align:center;font-weight:700;">${tot.toFixed(0)}h</td></tr>`;
   });
   const pw=window.open('','_blank');
-  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Horario</title><style>body{font-family:sans-serif;padding:20px;font-size:13px;}h2{color:#3D7A6E;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ddd;}@media print{button{display:none}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center;"><h2>Sessanio — Horario Semanal</h2><button onclick="window.print()" style="background:#3D7A6E;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">🖨️ Imprimir</button></div><p style="color:#555;margin-bottom:10px;">${wlabel()}</p><table><thead>${th}</thead><tbody>${tb}</tbody></table></body></html>`);
+  pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Horario</title><style>body{font-family:sans-serif;padding:20px;font-size:13px;}h2{color:#3D7A6E;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ddd;}@media print{button{display:none}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center;"><h2>Sessanio — Horario Semanal</h2><button onclick="window.print()" style="background:#3D7A6E;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">Imprimir</button></div><p style="color:#555;margin-bottom:10px;">'+wlabel()+'</p><table><thead>'+th+'</thead><tbody>'+tb+'</tbody></table></body></html>');
   pw.document.close();
 }
 
@@ -485,7 +486,7 @@ function cn(emp){
 function rN(){
   const se=sortedE();let total=0;
   const rows=se.map(emp=>{const n=cn(emp);total+=n.neto;
-    return`<div class="nr"><div><div class="nl">${emp.name}</div><div class="ns">${n.hO}h ord · ${n.hX}h ext · ${n.hD}h dom · ${n.tipo==='hora'?`${f$(n.vH)}/h`:'Fijo'}</div></div>
+    return`<div class="nr"><div><div class="nl">${emp.name}</div><div class="ns">${n.hO}h ord · ${n.hX}h ext · ${n.hD}h dom</div></div>
     <div style="text-align:right;"><div class="nv">${f$(n.neto)}</div>
     <button class="btn bs nom-det-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;margin-top:3px;">Detalle</button></div></div>`;
   }).join('');
@@ -504,9 +505,9 @@ function openNom(eid){
     <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1.2rem;">${n.hX}</div><div class="l">H. extra</div></div>
     <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1.2rem;">${n.hD}</div><div class="l">Dom/fest</div></div>
   </div>
-  <div class="nr"><div class="nl">${n.tipo==='hora'?`Base (${n.hO}h × ${f$(n.vH)}/h)`:'Salario proporcional'}</div><div class="nv">${f$(n.base)}</div></div>
-  <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${n.hX}h × ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
-  <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${n.hD}h × ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
+  <div class="nr"><div class="nl">${n.tipo==='hora'?`Base (${n.hO}h x ${f$(n.vH)}/h)`:'Salario proporcional'}</div><div class="nv">${f$(n.base)}</div></div>
+  <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${n.hX}h x ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
+  <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${n.hD}h x ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
   <div class="nr"><div class="nl">Auxilio transporte</div><div class="nv">${f$(AUX_T)}</div></div>
   <div class="nr" style="background:#F8F8F8;border-radius:8px;padding:8px;"><div class="nl" style="font-weight:800;">Total bruto</div><div class="nv">${f$(n.bruto)}</div></div>
   <div class="nr"><div class="nl" style="color:var(--da);">(-) Salud 4%</div><div class="nv" style="color:var(--da);">-${f$(n.s4)}</div></div>
@@ -519,15 +520,15 @@ function openNom(eid){
 function rNov(){
   const sch=curSch();const se=sortedE();const novs=[];
   se.forEach(emp=>{const sh=sch[emp.name]||[];let tot=0;sh.forEach(s=>tot+=ch(s));
-    if(tot>48)novs.push(`⚠️ <b>${emp.name}</b> supera 48h (${tot.toFixed(0)}h)`);
-    if(tot===0)novs.push(`📋 <b>${emp.name}</b> sin turnos asignados`);
-    if(!sh.includes('DESCANSO'))novs.push(`😴 <b>${emp.name}</b> sin día de descanso`);
+    if(tot>48)novs.push('⚠️ <b>'+emp.name+'</b> supera 48h ('+tot.toFixed(0)+'h)');
+    if(tot===0)novs.push('📋 <b>'+emp.name+'</b> sin turnos asignados');
+    if(!sh.includes('DESCANSO'))novs.push('😴 <b>'+emp.name+'</b> sin día de descanso');
   });
   DAYS.forEach((day,i)=>{
     const w=se.filter(emp=>{const s=(sch[emp.name]||[])[i];return s&&s!=='-'&&s!=='DESCANSO';});
-    if(w.length<2)novs.push(`👥 <b>${day}</b>: solo ${w.length} persona asignada`);
-    if(!w.some(e=>(e.roles||[]).includes('Barista')))novs.push(`☕ <b>${day}</b>: sin barista`);
-    if(!w.some(e=>(e.roles||[]).includes('Cocinera')))novs.push(`🍳 <b>${day}</b>: sin cocinero/a`);
+    if(w.length<2)novs.push('👥 <b>'+day+'</b>: solo '+w.length+' persona asignada');
+    if(!w.some(e=>(e.roles||[]).includes('Barista')))novs.push('☕ <b>'+day+'</b>: sin barista');
+    if(!w.some(e=>(e.roles||[]).includes('Cocinera')))novs.push('🍳 <b>'+day+'</b>: sin cocinero/a');
   });
   let tot=0;se.forEach(e=>{(sch[e.name]||[]).forEach(s=>tot+=ch(s));});
   $('v3').innerHTML=`<div class="sr"><div class="st"><div class="n">${novs.length}</div><div class="l">Novedades</div></div><div class="st go"><div class="n">${Math.round(tot)}</div><div class="l">Horas totales</div></div></div>
@@ -569,7 +570,7 @@ function calcProp(){
       <div class="st go" style="border-radius:10px;"><div class="n" style="font-size:1.1rem;">${f$(sessanio)}</div><div class="l">20% Sessanio</div></div>
       <div class="st" style="border-radius:10px;"><div class="n" style="font-size:1.1rem;">${f$(repartir)}</div><div class="l">80% Empleados</div></div>
     </div>
-    <div style="font-size:.7rem;font-weight:700;color:var(--td);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Por empleado · ${totalH.toFixed(0)}h totales</div>
+    <div style="font-size:.7rem;font-weight:700;color:var(--td);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Por empleado</div>
     ${rows}
     <div class="ntot" style="margin-top:10px;"><span>Total repartido</span><span class="t">${f$(repartir)}</span></div>`;
 }
@@ -598,7 +599,7 @@ function openEmpModal(id){
     $('efpref').value=e.pref||'Flexible';$('efnotes').value=e.notes||'';
     toggleTipo();
     selR=[...(e.roles||[])];
-    selR.forEach(r=>{const b=document.querySelector(`.role-btn[data-r="${r}"]`);if(b)b.style.border='2px solid var(--td)';});
+    selR.forEach(r=>{const b=document.querySelector('.role-btn[data-r="'+r+'"]');if(b)b.style.border='2px solid var(--td)';});
     $('del-emp-btn').style.display='block';
   }else{
     $('moet').textContent='👤 Nuevo colaborador';$('efid').value='';$('efname').value='';
@@ -614,27 +615,26 @@ function saveEmp(){
   if(id){
     const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
     Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes});
-    if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];}});}
-    await fbSaveEmp(e);toast(`✅ ${name} actualizado`);
+    if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}});}
+    fbSaveEmp(e);toast('✅ '+name+' actualizado');
   }else{
     const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:COLORS[E.length%COLORS.length],order:E.length};
     E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
-    await fbSaveEmp(nc);toast(`✅ ${name} agregado`);
+    fbSaveEmp(nc);toast('✅ '+name+' agregado');
   }
   cm('mo-emp');rc();
 }
 
 // ── EVENT LISTENERS FIJOS ──
 document.getElementById('tabs').addEventListener('click',e=>{
-  const tab=e.target.closest('.tab');
-  if(tab)gv(+tab.dataset.tab);
+  const tab=e.target.closest('.tab');if(tab)gv(+tab.dataset.tab);
 });
 $('close-picker').addEventListener('click',()=>cm('picker'));
 $('apply-custom').addEventListener('click',()=>{
   const e=$('pke').value,s=$('pks').value;
   if(!e||!s){toast('⚠️ Ingresa entrada y salida');return;}
   if(pt(e)>=pt(s)){toast('⚠️ Salida debe ser mayor');return;}
-  applyShift(`${e}-${s}`);
+  applyShift(e+'-'+s);
 });
 $('close-mo-emp').addEventListener('click',()=>cm('mo-emp'));
 $('close-mo-nom').addEventListener('click',()=>cm('mo-nom'));
@@ -644,12 +644,14 @@ $('save-emp-btn').addEventListener('click',saveEmp);
 $('del-emp-btn').addEventListener('click',()=>{
   const id=$('efid').value;if(!id)return;
   const e=E.find(x=>x.id===id);if(!e)return;
-  delId=id;$('cfmmsg').textContent=`Se eliminará a "${e.name}" y todos sus turnos.`;om('cfm');
+  delId=id;$('cfmmsg').textContent='Se eliminará a "'+e.name+'" y todos sus turnos.';om('cfm');
 });
 $('cfm-confirm').addEventListener('click',()=>{
   if(!delId){cm('cfm');return;}const e=E.find(x=>x.id===delId);if(!e){cm('cfm');return;}
-  const n=e.name;Object.keys(schedules).forEach(k=>{delete schedules[k][n];});
-  E=E.filter(x=>x.id!==delId);await fbDelEmp(delId);delId=null;cm('cfm');cm('mo-emp');rc();toast(`🗑 ${n} eliminado`);
+  const n=e.name;
+  Object.keys(schedules).forEach(k=>{delete schedules[k][n];fbSaveSch(k);});
+  fbDelEmp(delId);
+  E=E.filter(x=>x.id!==delId);delId=null;cm('cfm');cm('mo-emp');rc();toast('🗑 '+n+' eliminado');
 });
 $('eftipo').addEventListener('change',toggleTipo);
 document.querySelectorAll('.role-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -663,14 +665,13 @@ $('do-copy-btn').addEventListener('click',()=>{
   const srcKey=wkKey(0);const dstKey=wkKey(copyWkOff);
   const src=schedules[srcKey];if(!src){toast('⚠️ Esta semana no tiene horario');return;}
   schedules[dstKey]=JSON.parse(JSON.stringify(src));
-  cm('mo-copy');toast(`📋 Horario copiado a ${wlabel(copyWkOff)}`);
+  fbSaveSch(dstKey);cm('mo-copy');toast('📋 Horario copiado a '+wlabel(copyWkOff));
 });
 document.querySelectorAll('.mo,.picker,.cfm').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
 
 // ── INIT ──
 tick();setInterval(tick,60000);
-$('sdot').style.background='#E8A030'; // syncing
-fbLoad().then(()=>gv(0)).catch(()=>gv(0));
+fbInit();
 </script>
 </body>
 </html>
