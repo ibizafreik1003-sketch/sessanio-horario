@@ -108,7 +108,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 <div class="view" id="v4"></div>
 <div class="view" id="v5"></div>
 
-<!-- PICKER -->
 <div class="picker" id="picker">
   <div class="pbox">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -117,7 +116,7 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
     </div>
     <div class="popts" id="popts"></div>
     <div class="tsec">
-      <div class="tsec-lbl">🕐 Turno 1 — exacto</div>
+      <div class="tsec-lbl">🕐 Turno 1</div>
       <div class="pcust">
         <input type="time" class="fi" id="pke" value="08:00">
         <span style="color:var(--mu);font-size:.8rem;">a</span>
@@ -126,7 +125,7 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
       </div>
     </div>
     <div class="tsec" style="background:#FFF8E1;">
-      <div class="tsec-lbl" style="color:var(--go);">🕕 Turno 2 — opcional (mismo día)</div>
+      <div class="tsec-lbl" style="color:var(--go);">🕕 Turno 2 — opcional</div>
       <div class="pcust">
         <input type="time" class="fi" id="pke2" value="15:00">
         <span style="color:var(--mu);font-size:.8rem;">a</span>
@@ -138,7 +137,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
   </div>
 </div>
 
-<!-- MODAL EMPLEADO -->
 <div class="mo" id="mo-emp">
   <div class="mbox">
     <div class="mh"><h3 id="moet">👤</h3><button class="mc" id="close-mo-emp">✕</button></div>
@@ -163,13 +161,12 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
       <div><label>Turno pref.</label><select class="fi" id="efpref" style="margin:0;"><option>Mañana</option><option>Tarde</option><option>Flexible</option></select></div>
     </div>
     <label>Notas</label>
-    <textarea class="fi" id="efnotes" placeholder="Ej: No disponible lunes..." style="height:50px;resize:none;margin-bottom:12px;"></textarea>
+    <textarea class="fi" id="efnotes" style="height:50px;resize:none;margin-bottom:12px;"></textarea>
     <button class="btn bp" id="save-emp-btn" style="margin-bottom:8px;">💾 Guardar</button>
     <button class="btn br" id="del-emp-btn" style="display:none;">🗑 Eliminar colaborador</button>
   </div>
 </div>
 
-<!-- MODAL NÓMINA -->
 <div class="mo" id="mo-nom">
   <div class="mbox">
     <div class="mh"><h3 id="nomtitle">💰</h3><button class="mc" id="close-mo-nom">✕</button></div>
@@ -177,7 +174,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
   </div>
 </div>
 
-<!-- MODAL COPIAR -->
 <div class="mo" id="mo-copy">
   <div class="mbox">
     <div class="mh"><h3>📋 Copiar semana</h3><button class="mc" id="close-mo-copy">✕</button></div>
@@ -194,7 +190,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
   </div>
 </div>
 
-<!-- CONFIRM -->
 <div class="cfm" id="cfm">
   <div class="cbox">
     <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
@@ -210,7 +205,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 <div class="toast" id="toast"></div>
 
 <script>
-// ── FIREBASE ──
 firebase.initializeApp({
   apiKey:"AIzaSyCny4LH_Jn98S7_Fu414HBqiTqZl5wYWIc",
   authDomain:"horarios-sessanio-v7.firebaseapp.com",
@@ -219,23 +213,14 @@ firebase.initializeApp({
   messagingSenderId:"784759066547",
   appId:"1:784759066547:web:472931d61c076a03e9c5c6"
 });
-const db = firebase.firestore();
+const db=firebase.firestore();
 
-// ── CONSTANTS ──
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const COLORS=['#3D7A6E','#D4891A','#2A6EA6','#7C4A9F','#C0392B','#1A8A8A','#A06020','#3A6A9F','#8A3A5C','#5A5A9F','#8A6A30','#4A6B8F'];
 const RCSS={Mesera:'rm',Barista:'rb',Cajera:'rc2',Cocinera:'rco',Aux:'ra'};
 const RLBL={Mesera:'Mesero/a',Barista:'Barista',Cajera:'Cajero/a',Cocinera:'Cocina',Aux:'Aux.'};
-const PS=[
-  {v:'DESCANSO',l:'💤 Descanso'},
-  {v:'8:00-14:00',l:'🌅 Mañana (8-2)'},
-  {v:'14:00-20:00',l:'🌙 Tarde (2-8)'},
-  {v:'8:00-20:00',l:'⏰ Completo (8-8)'},
-  {v:'16:30-20:00',l:'🌆 Tarde corta'},
-  {v:'9:00-15:00',l:'☀️ Mediodía'},
-  {v:'-',l:'— Sin asignar'}
-];
+const PS=[{v:'DESCANSO',l:'💤 Descanso'},{v:'8:00-14:00',l:'🌅 Mañana (8-2)'},{v:'14:00-20:00',l:'🌙 Tarde (2-8)'},{v:'8:00-20:00',l:'⏰ Completo'},{v:'16:30-20:00',l:'🌆 Tarde corta'},{v:'9:00-15:00',l:'☀️ Mediodía'},{v:'-',l:'— Sin asignar'}];
 const SMMLV=1300000,AUX_T=162000;
 const DEFAULT_E=[
   {id:'1',name:'Sisley',roles:['Mesera'],tipo:'fijo',sal:1300000,vh:6000,pref:'Mañana',color:'#3D7A6E',notes:'',order:0},
@@ -246,73 +231,43 @@ const DEFAULT_E=[
   {id:'6',name:'Alejandro',roles:['Aux'],tipo:'hora',sal:1200000,vh:5500,pref:'Flexible',color:'#8A6A30',notes:'',order:5},
 ];
 
-// ── STATE ──
-let E=[...DEFAULT_E];
-let schedules={}; // {wkKey: {empName: [7 valores]}}
-let saving=false; // flag para evitar que onSnapshot sobreescriba mientras guardamos
-let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={};
+let E=[...DEFAULT_E],schedules={},pagos={};
+let saving=false,wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={};
 
-// ── UTILS ──
 const $=id=>document.getElementById(id);
 const toast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);};
 const tick=()=>$('clk').textContent=new Date().toLocaleDateString('es-CO',{weekday:'short',day:'numeric',month:'short'});
 const om=id=>$(id).classList.add('on');
 const cm=id=>$(id).classList.remove('on');
 const f$=n=>'$'+Math.round(n).toLocaleString('es-CO');
-const sortedE=()=>[...E].sort((a,b)=>(a.order||0)-(b.order||0));
 const sd=c=>$('sdot').style.background=c;
+const sortedE=()=>[...E].sort((a,b)=>(a.order||0)-(b.order||0));
 
-// ── WEEK KEY ──
-function wkKey(off=0){
-  const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
-  const d=n.getDay(),m=new Date(n);m.setDate(n.getDate()-(d===0?6:d-1));
-  return m.toISOString().slice(0,10);
-}
-
-// ── CURRENT SCHEDULE ──
-function curSch(){
-  const k=wkKey();
-  if(!schedules[k]) schedules[k]={};
-  E.forEach(e=>{if(!schedules[k][e.name]) schedules[k][e.name]=Array(7).fill('-');});
-  return schedules[k];
-}
-
-// ── TIME UTILS ──
-function pt(t){
-  if(!t)return null;
-  t=t.trim();
-  const m=t.match(/(\d+):(\d+)/);
-  if(!m)return null;
-  return+m[1]+(+m[2])/60;
-}
-function chSeg(seg){
-  if(!seg||seg==='-'||seg==='DESCANSO')return 0;
-  const p=seg.split('-');if(p.length<2)return 0;
-  const a=pt(p[0]),b=pt(p[1]);
-  return(!a||!b||b<=a)?0:b-a;
-}
-function ch(s){
-  if(!s||s==='-'||s==='DESCANSO')return 0;
-  return s.split('|').reduce((sum,seg)=>sum+chSeg(seg),0);
-}
+// Formato horas con minutos exactos
 function fmtH(h){
   const hh=Math.floor(h);
   const mm=Math.round((h-hh)*60);
   if(mm===0)return hh+'h';
   return hh+'h '+mm+'min';
 }
-function sc(s){
-  if(!s||s==='-')return'spx';
-  if(s==='DESCANSO')return'spd';
-  const first=s.split('|')[0];
-  const h=pt(first.split('-')[0]);
-  return h===null?'spx':h<12?'spm':'spt';
+
+function wkKey(off=0){
+  const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
+  const d=n.getDay(),m=new Date(n);m.setDate(n.getDate()-(d===0?6:d-1));
+  return m.toISOString().slice(0,10);
 }
-function sl(s){
-  if(!s||s==='-')return'+ Asignar';
-  if(s==='DESCANSO')return'💤 Descanso';
-  return s.split('|').map(seg=>seg.replace('-',' – ')).join(' / ');
+function curSch(){
+  const k=wkKey();
+  if(!schedules[k])schedules[k]={};
+  E.forEach(e=>{if(!schedules[k][e.name])schedules[k][e.name]=Array(7).fill('-');});
+  return schedules[k];
 }
+function pt(t){if(!t)return null;t=t.trim();const m=t.match(/(\d+):(\d+)/);if(!m)return null;return+m[1]+(+m[2])/60;}
+function chSeg(seg){if(!seg||seg==='-'||seg==='DESCANSO')return 0;const p=seg.split('-');if(p.length<2)return 0;const a=pt(p[0]),b=pt(p[1]);return(!a||!b||b<=a)?0:b-a;}
+function ch(s){if(!s||s==='-'||s==='DESCANSO')return 0;return s.split('|').reduce((sum,seg)=>sum+chSeg(seg),0);}
+function sc(s){if(!s||s==='-')return'spx';if(s==='DESCANSO')return'spd';const h=pt(s.split('|')[0].split('-')[0]);return h===null?'spx':h<12?'spm':'spt';}
+function sl(s){if(!s||s==='-')return'+ Asignar';if(s==='DESCANSO')return'💤 Descanso';return s.split('|').map(seg=>seg.replace('-',' – ')).join(' / ');}
+
 function wlabel(off=0){
   const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
   const d=n.getDay(),m=new Date(n);m.setDate(n.getDate()-(d===0?6:d-1));
@@ -330,159 +285,104 @@ function toggleTipo(){
   $('efvh-w').style.display=t==='hora'?'block':'none';
 }
 
-// ── FIREBASE OPS ──
-function fbSaveEmp(emp){
-  db.collection('employees').doc(String(emp.id)).set(emp)
-    .then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn('fbSaveEmp',e);});
-}
-function fbDelEmp(id){
-  db.collection('employees').doc(String(id)).delete().catch(e=>console.warn(e));
-}
+// Firebase
+function fbSaveEmp(emp){sd('#E8A030');db.collection('employees').doc(String(emp.id)).set(emp).then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});}
+function fbDelEmp(id){db.collection('employees').doc(String(id)).delete().catch(e=>console.warn(e));}
 function fbSaveSch(wkk){
   if(!schedules[wkk])return;
-  saving=true;
-  sd('#E8A030');
+  saving=true;sd('#E8A030');
   db.collection('weeks').doc(wkk).set({data:schedules[wkk]})
     .then(()=>{sd('#4CAF50');setTimeout(()=>{saving=false;},500);})
-    .catch(e=>{sd('#C0392B');saving=false;console.warn('fbSaveSch',e);});
+    .catch(e=>{sd('#C0392B');saving=false;console.warn(e);});
+}
+function fbSavePagos(wkk){
+  if(!pagos[wkk])return;
+  db.collection('pagos').doc(wkk).set({data:pagos[wkk]}).catch(e=>console.warn(e));
 }
 
-// ── FIREBASE INIT ──
 function fbInit(){
   sd('#E8A030');
   db.collection('employees').get().then(snap=>{
-    if(!snap.empty){
-      E=snap.docs.map(d=>({id:d.id,...d.data()}));
-      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
-    } else {
-      DEFAULT_E.forEach(e=>fbSaveEmp(e));
-    }
+    if(!snap.empty){E=snap.docs.map(d=>({id:d.id,...d.data()}));E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});}
+    else{DEFAULT_E.forEach(e=>fbSaveEmp(e));}
     return db.collection('weeks').get();
   }).then(snap=>{
     snap.forEach(d=>{schedules[d.id]=d.data().data||{};});
     return db.collection('pagos').get();
   }).then(snap=>{
     snap.forEach(d=>{pagos[d.id]=d.data().data||{};});
-    // Realtime: employees
-    db.collection('employees').onSnapshot(sn=>{
-      E=sn.docs.map(d=>({id:d.id,...d.data()}));
-      E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});
-      rc();
-    });
-    // Realtime: weeks — solo actualiza si NO estamos guardando
-    db.collection('weeks').onSnapshot(sn=>{
-      if(saving)return;
-      sn.forEach(d=>{schedules[d.id]=d.data().data||{};});
-      rc();
-    });
-    sd('#4CAF50');
-    gv(0);
-  }).catch(err=>{
-    console.warn('Firebase error:',err);
-    sd('#C0392B');
-    gv(0);
-  });
+    db.collection('employees').onSnapshot(sn=>{E=sn.docs.map(d=>({id:d.id,...d.data()}));E.forEach((e,i)=>{if(e.order===undefined)e.order=i;});rc();});
+    db.collection('weeks').onSnapshot(sn=>{if(saving)return;sn.forEach(d=>{schedules[d.id]=d.data().data||{};});rc();});
+    sd('#4CAF50');gv(0);
+  }).catch(err=>{console.warn('Firebase:',err);sd('#C0392B');gv(0);});
 }
 
-// ── NAV ──
-function gv(i){
-  curTab=i;
-  document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));
-  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));
-  [rE,rH,rN,rNov,rP,rS][i]();
-}
+function gv(i){curTab=i;document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));[rE,rH,rN,rNov,rP,rS][i]();}
 function rc(){[rE,rH,rN,rNov,rP,rS][curTab]();}
 
-// ── EMPLEADOS ──
 function rE(){
-  const se=sortedE();
-  let tot=0;se.forEach(e=>{(curSch()[e.name]||[]).forEach(s=>tot+=ch(s));});
-  let h=`<div class="sr">
-    <div class="st"><div class="n">${se.length}</div><div class="l">Colaboradores</div></div>
-    <div class="st go"><div class="n">${Math.round(tot)}</div><div class="l">Horas semana</div></div>
-  </div>
+  const se=sortedE();let tot=0;se.forEach(e=>{(curSch()[e.name]||[]).forEach(s=>tot+=ch(s));});
+  let h=`<div class="sr"><div class="st"><div class="n">${se.length}</div><div class="l">Colaboradores</div></div><div class="st go"><div class="n">${fmtH(tot)}</div><div class="l">Horas semana</div></div></div>
   <button class="btn bp" id="new-emp-btn" style="margin-bottom:12px;">+ Nuevo colaborador</button>`;
   se.forEach((e,idx)=>{
     let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
     const rh=(e.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
-    h+=`<div class="card" style="padding:11px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="ordb">
-          <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
-          <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===se.length-1?'disabled':''}>↓</button>
-        </div>
-        <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
-        <div style="flex:1;">
-          <div style="font-weight:800;font-size:.88rem;">${e.name}</div>
-          <div class="ero" style="margin:3px 0;">${rh}</div>
-          <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div>
-        </div>
-        <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
+    h+=`<div class="card" style="padding:11px;"><div style="display:flex;align-items:center;gap:8px;">
+      <div class="ordb">
+        <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
+        <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===se.length-1?'disabled':''}>↓</button>
       </div>
-      ${e.notes?`<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 ${e.notes}</div>`:''}
-    </div>`;
+      <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:.88rem;">${e.name}</div>
+        <div class="ero" style="margin:3px 0;">${rh}</div>
+        <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div>
+      </div>
+      <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
+    </div>${e.notes?'<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 '+e.notes+'</div>':''}</div>`;
   });
   $('v0').innerHTML=h;
   $('new-emp-btn').addEventListener('click',()=>openEmpModal(null));
   document.querySelectorAll('.edit-emp-btn').forEach(btn=>btn.addEventListener('click',()=>openEmpModal(btn.dataset.id)));
   document.querySelectorAll('.ordbt').forEach(btn=>btn.addEventListener('click',()=>{
     if(btn.disabled)return;
-    const se2=sortedE();
-    const idx=se2.findIndex(e=>e.id===btn.dataset.id);
-    const dir=+btn.dataset.dir;
-    const ni=idx+dir;
+    const se2=sortedE(),idx=se2.findIndex(e=>e.id===btn.dataset.id),dir=+btn.dataset.dir,ni=idx+dir;
     if(ni<0||ni>=se2.length)return;
     const ao=se2[idx].order||idx,bo=se2[ni].order||ni;
     se2[idx].order=bo;se2[ni].order=ao;
-    fbSaveEmp(se2[idx]);fbSaveEmp(se2[ni]);
-    rE();
+    fbSaveEmp(se2[idx]);fbSaveEmp(se2[ni]);rE();
   }));
 }
 
-// ── HORARIOS ──
 function rH(){
-  const sch=curSch();const se=sortedE();
+  const sch=curSch(),se=sortedE();
   const n=new Date();n.setDate(n.getDate()+wk*7);
   const d=n.getDay(),mon=new Date(n);mon.setDate(n.getDate()-(d===0?6:d-1));
-  let th=`<tr><th class="ec">Empleado</th>`;
-  for(let i=0;i<7;i++){
-    const dd=new Date(mon);dd.setDate(mon.getDate()+i);
-    th+=`<th>${DS[i]}<br><span style="font-weight:400;font-size:.54rem;opacity:.7;">${dd.getDate()} ${dd.toLocaleDateString('es-CO',{month:'short'}).replace('.','')} </span></th>`;
-  }
+  let th='<tr><th class="ec">Empleado</th>';
+  for(let i=0;i<7;i++){const dd=new Date(mon);dd.setDate(mon.getDate()+i);th+=`<th>${DS[i]}<br><span style="font-weight:400;font-size:.54rem;opacity:.7;">${dd.getDate()} ${dd.toLocaleDateString('es-CO',{month:'short'}).replace('.','')} </span></th>`;}
   th+='</tr>';
   let tb='';
   se.forEach(emp=>{
-    const sh=sch[emp.name]||Array(7).fill('-');
-    let tot=0;sh.forEach(s=>tot+=ch(s));
+    const sh=sch[emp.name]||Array(7).fill('-');let tot=0;sh.forEach(s=>tot+=ch(s));
     const rh=(emp.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
-    tb+=`<tr>
-      <td class="ecc"><div class="enm">${emp.name}</div><div class="ero">${rh}</div><div class="eh">⏱ ${fmtH(tot)}</div></td>`;
+    tb+=`<tr><td class="ecc"><div class="enm">${emp.name}</div><div class="ero">${rh}</div><div class="eh">⏱ ${fmtH(tot)}</div></td>`;
     sh.forEach((s,i)=>{
-      const hrs=ch(s),empty=!s||s==='-';
-      const double=s&&s.includes('|');
-      tb+=`<td class="sc" data-emp="${emp.id}" data-day="${i}">
-        <span class="sp ${empty?'spx':sc(s)}" style="${double?'font-size:.52rem;':''}">${sl(s)}</span>
-        ${hrs>0?`<span class="sh2">⏱ ${hrs.toFixed(1)}h</span>`:''}
-      </td>`;
+      const hrs=ch(s),empty=!s||s==='-',dbl=s&&s.includes('|');
+      tb+=`<td class="sc" data-emp="${emp.id}" data-day="${i}"><span class="sp ${empty?'spx':sc(s)}" style="${dbl?'font-size:.5rem;':''}">${sl(s)}</span>${hrs>0?'<span class="sh2">⏱ '+fmtH(hrs)+'</span>':''}</td>`;
     });
     tb+='</tr>';
   });
   const hasUndo=!!undoStack[wkKey()];
   $('v1').innerHTML=`
-  <div class="wknav">
-    <button id="wk-prev">◀</button>
-    <div class="wklbl">${wlabel()}<br><span class="wkn">${wnum()}</span></div>
-    <button id="wk-next">▶</button>
-  </div>
+  <div class="wknav"><button id="wk-prev">◀</button><div class="wklbl">${wlabel()}<br><span class="wkn">${wnum()}</span></div><button id="wk-next">▶</button></div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="btn bp" id="auto-gen-btn" style="flex:1;">✨ Auto-generar</button>
     <button class="btn bs" id="copy-week-btn" style="flex:1;">📋 Copiar semana</button>
     <button class="btn bg2" id="print-btn" style="flex:1;">🖨️ Imprimir</button>
   </div>
-  ${hasUndo?`<button class="btn bo" id="undo-btn" style="width:100%;margin-bottom:10px;">↩ Deshacer último auto-generar</button>`:''}
+  ${hasUndo?'<button class="btn bo" id="undo-btn" style="width:100%;margin-bottom:10px;">↩ Deshacer auto-generar</button>':''}
   <div class="sw"><table class="st2"><thead>${th}</thead><tbody>${tb}</tbody></table></div>
   <div style="font-size:.68rem;color:var(--mu);margin-top:8px;padding:8px;background:#fff;border-radius:8px;">💡 Toca celda para editar · Puedes asignar hasta 2 turnos por día</div>`;
-
   $('wk-prev').addEventListener('click',()=>{wk--;rH();});
   $('wk-next').addEventListener('click',()=>{wk++;rH();});
   $('auto-gen-btn').addEventListener('click',autoGen);
@@ -492,67 +392,50 @@ function rH(){
   document.querySelectorAll('.sc').forEach(td=>td.addEventListener('click',()=>openPicker(td.dataset.emp,+td.dataset.day)));
 }
 
-// ── PICKER ──
 function openPicker(eid,di){
-  pCtx={eid,di};
-  const emp=E.find(e=>e.id===eid);if(!emp)return;
+  pCtx={eid,di};const emp=E.find(e=>e.id===eid);if(!emp)return;
   const cur=(curSch()[emp.name]||[])[di]||'-';
   $('ptitle').textContent=emp.name+' — '+DAYS[di];
-  // mark selected preset
   $('popts').innerHTML=PS.map(o=>`<div class="popt${o.v===cur?' sel':''}" data-val="${o.v}">${o.l}</div>`).join('');
   document.querySelectorAll('.popt').forEach(el=>el.addEventListener('click',()=>{
     document.querySelectorAll('.popt').forEach(x=>x.classList.remove('sel'));
-    el.classList.add('sel');
-    applyShift(el.dataset.val);
+    el.classList.add('sel');applyShift(el.dataset.val);
   }));
-  // pre-fill times from current
   if(cur&&cur!=='-'&&cur!=='DESCANSO'){
     const segs=cur.split('|');
-    const p1=segs[0].split('-');
-    if(p1.length===2){$('pke').value=p1[0];$('pks').value=p1[1];}
+    const p1=segs[0].split('-');if(p1.length===2){$('pke').value=p1[0];$('pks').value=p1[1];}
     if(segs[1]){const p2=segs[1].split('-');if(p2.length===2){$('pke2').value=p2[0];$('pks2').value=p2[1];}}
   }
   om('picker');
 }
 
 function applyShift(val){
-  if(!pCtx)return;
-  const emp=E.find(e=>e.id===pCtx.eid);if(!emp)return;
-  const k=wkKey();
-  const sch=curSch();
+  if(!pCtx)return;const emp=E.find(e=>e.id===pCtx.eid);if(!emp)return;
+  const k=wkKey(),sch=curSch();
   if(!sch[emp.name])sch[emp.name]=Array(7).fill('-');
   if(!undoStack[k])undoStack[k]=JSON.parse(JSON.stringify(sch));
   sch[emp.name][pCtx.di]=val;
-  cm('picker');
-  fbSaveSch(k);
-  rH();
+  cm('picker');fbSaveSch(k);rH();
   toast('✅ '+emp.name+' — '+DAYS[pCtx.di]+': '+sl(val));
 }
 
 function undoGen(){
-  const k=wkKey();
-  if(!undoStack[k]){toast('⚠️ No hay cambio para deshacer');return;}
+  const k=wkKey();if(!undoStack[k]){toast('⚠️ No hay cambio para deshacer');return;}
   schedules[k]=JSON.parse(JSON.stringify(undoStack[k]));
-  delete undoStack[k];
-  fbSaveSch(k);
-  rH();
-  toast('↩ Horario restaurado');
+  delete undoStack[k];fbSaveSch(k);rH();toast('↩ Horario restaurado');
 }
 
 function autoGen(){
-  const k=wkKey();const sch=curSch();
+  const k=wkKey(),sch=curSch();
   undoStack[k]=JSON.parse(JSON.stringify(sch));
   const GS=['8:00-14:00','8:00-14:00','14:00-20:00','14:00-20:00','16:30-20:00','9:00-15:00'];
   E.forEach(emp=>{
     const txt=(emp.notes||'').toLowerCase();
-    const noM=/(no.*mañana|solo.*tarde)/i.test(txt);
-    const noT=/(solo.*mañana|no.*tarde)/i.test(txt);
-    const noMTJ=/(no.*lun.*jue)/i.test(txt);
-    const red=/(1 turno)/i.test(txt);
+    const noM=/(no.*mañana|solo.*tarde)/i.test(txt),noT=/(solo.*mañana|no.*tarde)/i.test(txt);
+    const noMTJ=/(no.*lun.*jue)/i.test(txt),red=/(1 turno)/i.test(txt);
     const rest=noMTJ?[0,1,2,3]:[Math.floor(Math.random()*7)];
     sch[emp.name]=DAYS.map((_,i)=>{
-      if(red&&i>0)return'DESCANSO';
-      if(rest.includes(i))return'DESCANSO';
+      if(red&&i>0)return'DESCANSO';if(rest.includes(i))return'DESCANSO';
       let pool=[...GS];
       if(noM)pool=pool.filter(s=>pt(s.split('-')[0])>=12);
       if(noT)pool=pool.filter(s=>pt(s.split('-')[0])<12);
@@ -562,89 +445,73 @@ function autoGen(){
       return pool[Math.floor(Math.random()*pool.length)];
     });
   });
-  fbSaveSch(k);
-  rH();
-  toast('✨ Horario generado y guardado');
+  fbSaveSch(k);rH();toast('✨ Horario generado y guardado');
 }
 
-// ── COPIAR ──
 function openCopy(){copyWkOff=1;updateCopyLbl();om('mo-copy');}
 function updateCopyLbl(){
   $('copy-wk-lbl').textContent=(copyWkOff>0?'+':'')+copyWkOff+' semana'+(Math.abs(copyWkOff)>1?'s':'');
   $('copy-wk-date').textContent=wlabel(copyWkOff);
 }
 
-// ── PRINT ──
 function printH(){
-  const sch=curSch();const se=sortedE();
-  const n=new Date();n.setDate(n.getDate()+wk*7);
-  const d=n.getDay(),mon=new Date(n);mon.setDate(n.getDate()-(d===0?6:d-1));
+  const sch=curSch(),se=sortedE();
+  const n=new Date();n.setDate(n.getDate()+wk*7);const d=n.getDay(),mon=new Date(n);mon.setDate(n.getDate()-(d===0?6:d-1));
   let th='<tr style="background:#3D7A6E;color:#fff;"><th style="text-align:left;padding:8px;">Empleado</th>';
   for(let i=0;i<7;i++){const dd=new Date(mon);dd.setDate(mon.getDate()+i);th+=`<th style="padding:8px;text-align:center;">${DS[i]}<br><small>${dd.getDate()}/${dd.getMonth()+1}</small></th>`;}
   th+='<th style="padding:8px;">Horas</th></tr>';
   let tb='';
   se.forEach((emp,idx)=>{
-    const sh=sch[emp.name]||Array(7).fill('-');
-    let tot=0;sh.forEach(s=>tot+=ch(s));
-    tb+=`<tr style="background:${idx%2===0?'#fff':'#EAF5F3'};"><td style="padding:8px;font-weight:700;">${emp.name}<br><small style="color:#666;">${(emp.roles||[]).map(r=>RLBL[r]||r).join(', ')}</small></td>${sh.map(s=>`<td style="padding:8px;text-align:center;font-size:.8rem;">${sl(s)}</td>`).join('')}<td style="padding:8px;text-align:center;font-weight:700;">${tot.toFixed(1)}h</td></tr>`;
+    const sh=sch[emp.name]||Array(7).fill('-');let tot=0;sh.forEach(s=>tot+=ch(s));
+    tb+=`<tr style="background:${idx%2===0?'#fff':'#EAF5F3'};"><td style="padding:8px;font-weight:700;">${emp.name}<br><small style="color:#666;">${(emp.roles||[]).map(r=>RLBL[r]||r).join(', ')}</small></td>${sh.map(s=>`<td style="padding:8px;text-align:center;font-size:.8rem;">${sl(s)}</td>`).join('')}<td style="padding:8px;text-align:center;font-weight:700;">${fmtH(tot)}</td></tr>`;
   });
   const pw=window.open('','_blank');
-  pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Horario Sessanio</title><style>body{font-family:sans-serif;padding:20px;font-size:13px;}h2{color:#3D7A6E;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ddd;}@media print{button{display:none}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center;"><h2>Sessanio — Horario Semanal</h2><button onclick="window.print()" style="background:#3D7A6E;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">🖨️ Imprimir</button></div><p style="color:#555;margin-bottom:10px;">'+wlabel()+'</p><table><thead>'+th+'</thead><tbody>'+tb+'</tbody></table></body></html>');
+  pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Horario Sessanio</title><style>body{font-family:sans-serif;padding:20px;font-size:13px;}h2{color:#3D7A6E;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ddd;}@media print{button{display:none}}</style></head><body><div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center;"><h2>Sessanio — Horario Semanal</h2><button onclick="window.print()" style="background:#3D7A6E;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">Imprimir</button></div><p style="color:#555;margin-bottom:10px;">'+wlabel()+'</p><table><thead>'+th+'</thead><tbody>'+tb+'</tbody></table></body></html>');
   pw.document.close();
 }
 
 // ── NÓMINA ──
-// pagos registrados: {wkKey: {empId: fechaPago}}
-let pagos={};
-
-function ch_all(emp){
-  return(curSch()[emp.name]||[]).reduce((s,x)=>s+ch(x),0);
-}
 function cn(emp){
   const sh=curSch()[emp.name]||[];
-  let hO=0,hX=0,hD=0;
-  sh.forEach((s,i)=>{
-    const h=ch(s);
-    if(i>=5)hD+=h;
-    else{if(h>8)hX+=(h-8);hO+=Math.min(h,8);}
-  });
   const tipo=emp.tipo||'fijo';
-  let vH,base;
   if(tipo==='hora'){
-    vH=emp.vh||6000;
-    const totalH=ch_all(emp);
-    return{hO:totalH,hX:0,hD:0,base:totalH*vH,ext:0,dom:0,bruto:totalH*vH,s4:0,p4:0,neto:totalH*vH,vH,tipo};
-  } else {
-    const sal=emp.sal||SMMLV;vH=sal/240;
-    base=Math.min(hO/48*sal,sal);
-    const ext=hX*vH*1.25,dom=hD*vH*1.75,bruto=base+ext+dom+AUX_T,s4=bruto*.04,p4=bruto*.04,neto=bruto-s4-p4;
-    return{hO,hX,hD,base,ext,dom,bruto,s4,p4,neto,vH,tipo};
+    // Por hora: total simple, sin extras, sin subsidio, sin deducciones
+    const totalH=sh.reduce((s,x)=>s+ch(x),0);
+    const vH=emp.vh||6000;
+    const total=totalH*vH;
+    return{totalH,vH,neto:total,tipo};
   }
+  // Salario fijo: proporcional + extras + subsidio + deducciones
+  let hO=0,hX=0,hD=0;
+  sh.forEach((s,i)=>{const h=ch(s);if(i>=5)hD+=h;else{if(h>8)hX+=(h-8);hO+=Math.min(h,8);}});
+  const sal=emp.sal||SMMLV,vH=sal/240;
+  const base=Math.min(hO/48*sal,sal);
+  const ext=hX*vH*1.25,dom=hD*vH*1.75,bruto=base+ext+dom+AUX_T;
+  const s4=bruto*.04,p4=bruto*.04,neto=bruto-s4-p4;
+  return{hO,hX,hD,base,ext,dom,bruto,s4,p4,neto,vH,tipo};
 }
 
-function fbSavePagos(wkk){
-  if(!pagos[wkk])return;
-  db.collection('pagos').doc(wkk).set({data:pagos[wkk]}).catch(e=>console.warn(e));
-}
 function rN(){
-  const se=sortedE();
-  const k=wkKey();
+  const se=sortedE(),k=wkKey();
   if(!pagos[k])pagos[k]={};
   const semPagada=se.length>0&&se.every(e=>pagos[k][e.id]);
   let total=0;
   const rows=se.map(emp=>{
     const n=cn(emp);total+=n.neto;
     const pagado=!!pagos[k][emp.id];
+    const hrs=n.tipo==='hora'?fmtH(n.totalH):(fmtH(n.hO)+' ord · '+fmtH(n.hX)+' ext · '+fmtH(n.hD)+' dom');
     return`<div class="nr">
       <div>
         <div class="nl">${emp.name} ${pagado?'<span style="background:#D4EDDA;color:#155724;border-radius:20px;padding:1px 7px;font-size:.6rem;font-weight:700;">✓ Pagado</span>':''}</div>
-        <div class="ns">${fmtH(n.hO)} ord · ${fmtH(n.hX)} ext · ${fmtH(n.hD)} dom</div>
+        <div class="ns">${hrs}</div>
       </div>
       <div style="text-align:right;">
         <div class="nv">${f$(n.neto)}</div>
         <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px;">
           <button class="btn bs nom-det-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;">Detalle</button>
-          ${!pagado?`<button class="btn bp pagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;background:#3D7A6E;">✓ Pagar</button>`:`<button class="btn bs unpagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;opacity:.6;">Deshacer</button>`}
+          ${!pagado
+            ?`<button class="btn bp pagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;">✓ Pagar</button>`
+            :`<button class="btn bs unpagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;opacity:.6;">Deshacer</button>`}
         </div>
       </div>
     </div>`;
@@ -652,69 +519,74 @@ function rN(){
   $('v2').innerHTML=`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <div style="font-size:.82rem;font-weight:700;">💰 Nómina — ${wlabel()}</div>
-      ${!semPagada?`<button class="btn bp" id="pagar-todos-btn" style="padding:5px 12px;font-size:.68rem;width:auto;">✓ Pagar todos</button>`:'<span style="font-size:.7rem;background:#D4EDDA;color:#155724;border-radius:20px;padding:3px 10px;font-weight:700;">✅ Semana pagada</span>'}
+      ${!semPagada
+        ?`<button class="btn bp" id="pagar-todos-btn" style="padding:5px 12px;font-size:.68rem;width:auto;">✓ Pagar todos</button>`
+        :'<span style="font-size:.7rem;background:#D4EDDA;color:#155724;border-radius:20px;padding:3px 10px;font-weight:700;">✅ Semana pagada</span>'}
     </div>
-    <div style="font-size:.68rem;color:var(--mu);margin-bottom:12px;">Salud 4% + Pensión 4% · Minutos exactos</div>
+    <div style="font-size:.68rem;color:var(--mu);margin-bottom:12px;">Salud/Pensión solo aplica a salario fijo · Horas con minutos exactos</div>
     ${rows}
-    <div class="ntot"><span style="font-size:.78rem;opacity:.8;">Total neto a pagar</span><span class="t">${f$(total)}</span></div>
+    <div class="ntot"><span style="font-size:.78rem;opacity:.8;">Total a pagar</span><span class="t">${f$(total)}</span></div>
   </div>
   <div class="card" style="background:var(--tb);">
-    <div style="font-size:.7rem;color:var(--td);font-weight:700;">ℹ️ Referencia legal</div>
-    <div style="font-size:.66rem;color:var(--mu);margin-top:4px;">H. extra +25% · Dom/festivo +75% · Aux. transporte ${f$(AUX_T)}/mes · Valor calculado sobre minutos exactos trabajados</div>
+    <div style="font-size:.7rem;color:var(--td);font-weight:700;">ℹ️ Referencia</div>
+    <div style="font-size:.66rem;color:var(--mu);margin-top:4px;">Por hora: horas × valor pactado (sin extras ni deducciones) · Fijo: proporcional + extras + auxilio transporte ${f$(AUX_T)} - Salud/Pensión 4%</div>
   </div>`;
   document.querySelectorAll('.nom-det-btn').forEach(btn=>btn.addEventListener('click',()=>openNom(btn.dataset.id)));
   document.querySelectorAll('.pagar-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const k2=wkKey();if(!pagos[k2])pagos[k2]={};
-    pagos[k2][btn.dataset.id]=new Date().toLocaleDateString('es-CO');
-    fbSavePagos(k2);rN();toast('✅ Pago registrado');
+    if(!pagos[k])pagos[k]={};
+    pagos[k][btn.dataset.id]=new Date().toLocaleDateString('es-CO');
+    fbSavePagos(k);rN();toast('✅ Pago registrado');
   }));
   document.querySelectorAll('.unpagar-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const k2=wkKey();if(pagos[k2])delete pagos[k2][btn.dataset.id];
-    fbSavePagos(k2);rN();toast('↩ Pago deshecho');
+    if(pagos[k])delete pagos[k][btn.dataset.id];
+    fbSavePagos(k);rN();toast('↩ Pago deshecho');
   }));
-  const pagarTodos=$('pagar-todos-btn');
-  if(pagarTodos)pagarTodos.addEventListener('click',()=>{
-    const k2=wkKey();if(!pagos[k2])pagos[k2]={};
+  const pt=$('pagar-todos-btn');
+  if(pt)pt.addEventListener('click',()=>{
+    if(!pagos[k])pagos[k]={};
     const fecha=new Date().toLocaleDateString('es-CO');
-    se.forEach(e=>{pagos[k2][e.id]=fecha;});
-    fbSavePagos(k2);rN();toast('✅ Todos marcados como pagados');
+    se.forEach(e=>{pagos[k][e.id]=fecha;});
+    fbSavePagos(k);rN();toast('✅ Todos marcados como pagados');
   });
 }
+
 function openNom(eid){
   const emp=E.find(e=>e.id===eid);if(!emp)return;
   const n=cn(emp);
   $('nomtitle').textContent='💰 '+emp.name;
-  $('nombody').innerHTML= n.tipo==='hora' ? `
-  <div class="card" style="background:var(--tb);margin-bottom:10px;">
-    <div style="font-size:.72rem;color:var(--td);font-weight:700;">⏱ Pago por horas</div>
-    <div style="font-size:.68rem;color:var(--mu);margin-top:3px;">El valor/hora ya incluye todo. No aplica subsidio de transporte, extras ni deducciones de ley.</div>
-  </div>
-  <div class="nr"><div class="nl">Total horas trabajadas</div><div class="nv">${fmtH(n.hO)}</div></div>
-  <div class="nr"><div class="nl">Valor por hora pactado</div><div class="nv">${f$(n.vH)}/h</div></div>
-  <div class="ntot" style="margin-top:12px;"><span>TOTAL A PAGAR</span><span class="t">${f$(n.neto)}</span></div>
-  ` : `
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hO)}</div><div class="l">Horas ord.</div></div>
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hX)}</div><div class="l">H. extra</div></div>
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hD)}</div><div class="l">Dom/fest</div></div>
-  </div>
-  <div class="nr"><div class="nl">${n.tipo==='hora'?'Base ('+fmtH(n.hO)+' x '+f$(n.vH)+'/h)':'Salario proporcional'}</div><div class="nv">${f$(n.base)}</div></div>
-  <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${fmtH(n.hX)} x ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
-  <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${fmtH(n.hD)} x ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
-  <div class="nr"><div class="nl">Auxilio transporte</div><div class="nv">${f$(AUX_T)}</div></div>
-  <div class="nr" style="background:#F8F8F8;border-radius:8px;padding:8px;"><div class="nl" style="font-weight:800;">Total bruto</div><div class="nv">${f$(n.bruto)}</div></div>
-  <div class="nr"><div class="nl" style="color:var(--da);">(-) Salud 4%</div><div class="nv" style="color:var(--da);">-${f$(n.s4)}</div></div>
-  <div class="nr"><div class="nl" style="color:var(--da);">(-) Pensión 4%</div><div class="nv" style="color:var(--da);">-${f$(n.p4)}</div></div>
-  <div class="ntot" style="margin-top:12px;"><span>NETO A PAGAR</span><span class="t">${f$(n.neto)}</span></div>\`;
+  if(n.tipo==='hora'){
+    $('nombody').innerHTML=`
+    <div class="card" style="background:var(--tb);margin-bottom:10px;">
+      <div style="font-size:.72rem;color:var(--td);font-weight:700;">⏱ Pago por horas</div>
+      <div style="font-size:.68rem;color:var(--mu);margin-top:3px;">El valor/hora ya incluye todo. Sin subsidio, sin extras, sin deducciones.</div>
+    </div>
+    <div class="nr"><div class="nl">Total horas trabajadas</div><div class="nv">${fmtH(n.totalH)}</div></div>
+    <div class="nr"><div class="nl">Valor por hora pactado</div><div class="nv">${f$(n.vH)}/h</div></div>
+    <div class="ntot" style="margin-top:12px;"><span>TOTAL A PAGAR</span><span class="t">${f$(n.neto)}</span></div>`;
+  } else {
+    $('nombody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hO)}</div><div class="l">Horas ord.</div></div>
+      <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hX)}</div><div class="l">H. extra</div></div>
+      <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hD)}</div><div class="l">Dom/fest</div></div>
+    </div>
+    <div class="nr"><div class="nl">Salario proporcional</div><div class="nv">${f$(n.base)}</div></div>
+    <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${fmtH(n.hX)} × ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
+    <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${fmtH(n.hD)} × ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
+    <div class="nr"><div class="nl">Auxilio transporte</div><div class="nv">${f$(AUX_T)}</div></div>
+    <div class="nr" style="background:#F8F8F8;border-radius:8px;padding:8px;"><div class="nl" style="font-weight:800;">Total bruto</div><div class="nv">${f$(n.bruto)}</div></div>
+    <div class="nr"><div class="nl" style="color:var(--da);">(-) Salud 4%</div><div class="nv" style="color:var(--da);">-${f$(n.s4)}</div></div>
+    <div class="nr"><div class="nl" style="color:var(--da);">(-) Pensión 4%</div><div class="nv" style="color:var(--da);">-${f$(n.p4)}</div></div>
+    <div class="ntot" style="margin-top:12px;"><span>NETO A PAGAR</span><span class="t">${f$(n.neto)}</span></div>`;
+  }
   om('mo-nom');
 }
 
-// ── NOVEDADES ──
 function rNov(){
-  const sch=curSch();const se=sortedE();const novs=[];
+  const sch=curSch(),se=sortedE(),novs=[];
   se.forEach(emp=>{
     const sh=sch[emp.name]||[];let tot=0;sh.forEach(s=>tot+=ch(s));
-    if(tot>48)novs.push('⚠️ <b>'+emp.name+'</b> supera 48h ('+tot.toFixed(1)+'h)');
+    if(tot>48)novs.push('⚠️ <b>'+emp.name+'</b> supera 48h ('+fmtH(tot)+')');
     if(tot===0)novs.push('📋 <b>'+emp.name+'</b> sin turnos asignados');
     if(!sh.some(s=>s==='DESCANSO'))novs.push('😴 <b>'+emp.name+'</b> sin día de descanso');
   });
@@ -725,16 +597,11 @@ function rNov(){
     if(!w.some(e=>(e.roles||[]).includes('Cocinera')))novs.push('🍳 <b>'+day+'</b>: sin cocinero/a');
   });
   let tot=0;se.forEach(e=>{(sch[e.name]||[]).forEach(s=>tot+=ch(s));});
-  $('v3').innerHTML=`<div class="sr">
-    <div class="st"><div class="n">${novs.length}</div><div class="l">Novedades</div></div>
-    <div class="st go"><div class="n">${Math.round(tot)}</div><div class="l">Horas totales</div></div>
-  </div>
+  $('v3').innerHTML=`<div class="sr"><div class="st"><div class="n">${novs.length}</div><div class="l">Novedades</div></div><div class="st go"><div class="n">${fmtH(tot)}</div><div class="l">Horas totales</div></div></div>
   <div class="card"><div style="font-size:.82rem;font-weight:700;margin-bottom:10px;">⚠️ Alertas</div>
-  ${novs.length?novs.map(n=>`<div class="nov">${n}</div>`).join(''):'<div style="color:var(--td);text-align:center;padding:20px;">✅ Sin novedades esta semana</div>'}
-  </div>`;
+  ${novs.length?novs.map(n=>'<div class="nov">'+n+'</div>').join(''):'<div style="color:var(--td);text-align:center;padding:20px;">✅ Sin novedades esta semana</div>'}</div>`;
 }
 
-// ── PROPINAS ──
 function rP(){
   $('v4').innerHTML=`<div class="card">
     <div style="font-size:.82rem;font-weight:700;margin-bottom:12px;">🤝 Calculadora de propinas</div>
@@ -752,7 +619,7 @@ function calcProp(){
   const total=+el.value||0;
   if(total===0){$('prop-result').innerHTML='<div style="text-align:center;color:var(--mu);font-size:.8rem;padding:20px;">Ingresa el total de propinas para calcular</div>';return;}
   const sessanio=total*0.2,repartir=total*0.8;
-  const sch=curSch();const se=sortedE();
+  const sch=curSch(),se=sortedE();
   let totalH=0;se.forEach(e=>{(sch[e.name]||[]).forEach(s=>totalH+=ch(s));});
   let rows='';
   se.forEach(emp=>{
@@ -760,7 +627,7 @@ function calcProp(){
     const pct=totalH>0?(eh/totalH):0,monto=repartir*pct;
     rows+=`<div class="nr"><div style="display:flex;align-items:center;gap:8px;">
       <div class="av" style="background:${emp.color};width:26px;height:26px;font-size:.68rem;">${emp.name[0]}</div>
-      <div><div class="nl">${emp.name}</div><div class="ns">${eh.toFixed(1)}h · ${(pct*100).toFixed(1)}%</div></div>
+      <div><div class="nl">${emp.name}</div><div class="ns">${fmtH(eh)} · ${(pct*100).toFixed(1)}%</div></div>
     </div><div class="nv">${f$(monto)}</div></div>`;
   });
   $('prop-result').innerHTML=`
@@ -768,35 +635,27 @@ function calcProp(){
       <div class="st go" style="border-radius:10px;"><div class="n" style="font-size:1.1rem;">${f$(sessanio)}</div><div class="l">20% Sessanio</div></div>
       <div class="st" style="border-radius:10px;"><div class="n" style="font-size:1.1rem;">${f$(repartir)}</div><div class="l">80% Empleados</div></div>
     </div>
-    <div style="font-size:.7rem;font-weight:700;color:var(--td);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Por empleado · ${totalH.toFixed(1)}h totales</div>
+    <div style="font-size:.7rem;font-weight:700;color:var(--td);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Por empleado · ${fmtH(totalH)} totales</div>
     ${rows}
     <div class="ntot" style="margin-top:10px;"><span>Total repartido</span><span class="t">${f$(repartir)}</span></div>`;
 }
 
-// ── SOLICITUDES ──
 function rS(){
   const se=sortedE();
   $('v5').innerHTML=`<div class="card">
     <div style="font-weight:700;font-size:.84rem;margin-bottom:10px;">🔔 Solicitudes de disponibilidad</div>
-    ${se.map(e=>`<div class="erow">
-      <div class="av" style="background:${e.color};width:28px;height:28px;font-size:.7rem;">${e.name[0]}</div>
-      <div style="flex:1;"><div style="font-weight:600;font-size:.82rem;">${e.name}</div></div>
-      <span class="badge bpnd">⏳ Pendiente</span>
-    </div>`).join('')}
+    ${se.map(e=>'<div class="erow"><div class="av" style="background:'+e.color+';width:28px;height:28px;font-size:.7rem;">'+e.name[0]+'</div><div style="flex:1;"><div style="font-weight:600;font-size:.82rem;">'+e.name+'</div></div><span class="badge bpnd">⏳ Pendiente</span></div>').join('')}
   </div>`;
 }
 
-// ── EMP MODAL ──
 function openEmpModal(id){
-  selR=[];
-  document.querySelectorAll('.role-btn').forEach(b=>b.style.border='1px solid transparent');
+  selR=[];document.querySelectorAll('.role-btn').forEach(b=>b.style.border='1px solid transparent');
   if(id!=null){
     const e=E.find(x=>x.id===id);if(!e)return;
     $('moet').textContent='✏️ '+e.name;$('efid').value=id;$('efname').value=e.name;
     $('eftipo').value=e.tipo||'fijo';$('efsal').value=e.sal||SMMLV;$('efvh').value=e.vh||6000;
     $('efpref').value=e.pref||'Flexible';$('efnotes').value=e.notes||'';
-    toggleTipo();
-    selR=[...(e.roles||[])];
+    toggleTipo();selR=[...(e.roles||[])];
     selR.forEach(r=>{const b=document.querySelector('.role-btn[data-r="'+r+'"]');if(b)b.style.border='2px solid var(--td)';});
     $('del-emp-btn').style.display='block';
   }else{
@@ -811,52 +670,39 @@ function saveEmp(){
   if(!selR.length){toast('⚠️ Selecciona al menos un rol');return;}
   const id=$('efid').value,tipo=$('eftipo').value,sal=+$('efsal').value||SMMLV,vh=+$('efvh').value||6000,pref=$('efpref').value,notes=$('efnotes').value.trim();
   if(id){
-    const e=E.find(x=>x.id===id);if(!e)return;
-    const old=e.name;
+    const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
     Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes});
-    if(old!==name){
-      Object.keys(schedules).forEach(k=>{
-        if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}
-      });
-    }
+    if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}});}
     fbSaveEmp(e);toast('✅ '+name+' actualizado');
   }else{
     const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:COLORS[E.length%COLORS.length],order:E.length};
-    E.push(nc);
-    Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
+    E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
     fbSaveEmp(nc);toast('✅ '+name+' agregado');
   }
   cm('mo-emp');rc();
 }
 
-// ── EVENT LISTENERS FIJOS ──
-document.getElementById('tabs').addEventListener('click',e=>{
-  const tab=e.target.closest('.tab');if(tab)gv(+tab.dataset.tab);
-});
+// Event listeners fijos
+document.getElementById('tabs').addEventListener('click',e=>{const tab=e.target.closest('.tab');if(tab)gv(+tab.dataset.tab);});
 $('close-picker').addEventListener('click',()=>cm('picker'));
-
-// Turno 1
 $('apply-t1').addEventListener('click',()=>{
   const e=$('pke').value,s=$('pks').value;
   if(!e||!s){toast('⚠️ Ingresa entrada y salida');return;}
-  if(pt(e)>=pt(s)){toast('⚠️ La salida debe ser mayor que la entrada');return;}
+  if(pt(e)>=pt(s)){toast('⚠️ La salida debe ser mayor');return;}
   applyShift(e+'-'+s);
 });
-
-// Turno 2 — se agrega al turno 1 existente
 $('apply-t2').addEventListener('click',()=>{
-  if(!pCtx){toast('⚠️ Abre primero una celda del horario');return;}
+  if(!pCtx){toast('⚠️ Abre primero una celda');return;}
   const e2=$('pke2').value,s2=$('pks2').value;
   if(!e2||!s2){toast('⚠️ Ingresa entrada y salida del turno 2');return;}
-  if(pt(e2)>=pt(s2)){toast('⚠️ La salida debe ser mayor que la entrada');return;}
+  if(pt(e2)>=pt(s2)){toast('⚠️ La salida debe ser mayor');return;}
   const emp=E.find(x=>x.id===pCtx.eid);if(!emp)return;
   const cur=(curSch()[emp.name]||[])[pCtx.di]||'-';
   if(!cur||cur==='-'||cur==='DESCANSO'){toast('⚠️ Primero guarda el Turno 1');return;}
-  const base=cur.split('|')[0]; // siempre toma solo el primero
+  const base=cur.split('|')[0];
   if(pt(e2)<pt(base.split('-')[1])){toast('⚠️ El Turno 2 debe ser después del Turno 1');return;}
   applyShift(base+'|'+e2+'-'+s2);
 });
-
 $('close-mo-emp').addEventListener('click',()=>cm('mo-emp'));
 $('close-mo-nom').addEventListener('click',()=>cm('mo-nom'));
 $('close-mo-copy').addEventListener('click',()=>cm('mo-copy'));
@@ -868,13 +714,10 @@ $('del-emp-btn').addEventListener('click',()=>{
   delId=id;$('cfmmsg').textContent='Se eliminará a "'+e.name+'" y todos sus turnos.';om('cfm');
 });
 $('cfm-confirm').addEventListener('click',()=>{
-  if(!delId){cm('cfm');return;}
-  const e=E.find(x=>x.id===delId);if(!e){cm('cfm');return;}
+  if(!delId){cm('cfm');return;}const e=E.find(x=>x.id===delId);if(!e){cm('cfm');return;}
   const n=e.name;
   Object.keys(schedules).forEach(k=>{delete schedules[k][n];fbSaveSch(k);});
-  fbDelEmp(delId);
-  E=E.filter(x=>x.id!==delId);
-  delId=null;cm('cfm');cm('mo-emp');rc();
+  fbDelEmp(delId);E=E.filter(x=>x.id!==delId);delId=null;cm('cfm');cm('mo-emp');rc();
   toast('🗑 '+n+' eliminado');
 });
 $('eftipo').addEventListener('change',toggleTipo);
@@ -886,17 +729,13 @@ document.querySelectorAll('.role-btn').forEach(btn=>btn.addEventListener('click'
 $('copy-wk-minus').addEventListener('click',()=>{copyWkOff--;if(copyWkOff===0)copyWkOff--;updateCopyLbl();});
 $('copy-wk-plus').addEventListener('click',()=>{copyWkOff++;if(copyWkOff===0)copyWkOff++;updateCopyLbl();});
 $('do-copy-btn').addEventListener('click',()=>{
-  const srcKey=wkKey(0);const dstKey=wkKey(copyWkOff);
-  const src=schedules[srcKey];
+  const srcKey=wkKey(0),dstKey=wkKey(copyWkOff),src=schedules[srcKey];
   if(!src||Object.keys(src).length===0){toast('⚠️ Esta semana no tiene horario');return;}
   schedules[dstKey]=JSON.parse(JSON.stringify(src));
-  fbSaveSch(dstKey);
-  cm('mo-copy');
-  toast('📋 Horario copiado a '+wlabel(copyWkOff));
+  fbSaveSch(dstKey);cm('mo-copy');toast('📋 Horario copiado a '+wlabel(copyWkOff));
 });
 document.querySelectorAll('.mo,.picker,.cfm').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
 
-// ── INIT ──
 tick();setInterval(tick,60000);
 fbInit();
 </script>
