@@ -597,6 +597,9 @@ function printH(){
 // pagos registrados: {wkKey: {empId: fechaPago}}
 let pagos={};
 
+function ch_all(emp){
+  return(curSch()[emp.name]||[]).reduce((s,x)=>s+ch(x),0);
+}
 function cn(emp){
   const sh=curSch()[emp.name]||[];
   let hO=0,hX=0,hD=0;
@@ -608,15 +611,15 @@ function cn(emp){
   const tipo=emp.tipo||'fijo';
   let vH,base;
   if(tipo==='hora'){
-    // valor exacto en horas decimales (minutos exactos)
     vH=emp.vh||6000;
-    base=hO*vH;
+    const totalH=ch_all(emp);
+    return{hO:totalH,hX:0,hD:0,base:totalH*vH,ext:0,dom:0,bruto:totalH*vH,s4:0,p4:0,neto:totalH*vH,vH,tipo};
   } else {
     const sal=emp.sal||SMMLV;vH=sal/240;
     base=Math.min(hO/48*sal,sal);
+    const ext=hX*vH*1.25,dom=hD*vH*1.75,bruto=base+ext+dom+AUX_T,s4=bruto*.04,p4=bruto*.04,neto=bruto-s4-p4;
+    return{hO,hX,hD,base,ext,dom,bruto,s4,p4,neto,vH,tipo};
   }
-  const ext=hX*vH*1.25,dom=hD*vH*1.75,bruto=base+ext+dom+AUX_T,s4=bruto*.04,p4=bruto*.04,neto=bruto-s4-p4;
-  return{hO,hX,hD,base,ext,dom,bruto,s4,p4,neto,vH,tipo};
 }
 
 function fbSavePagos(wkk){
@@ -681,7 +684,15 @@ function openNom(eid){
   const emp=E.find(e=>e.id===eid);if(!emp)return;
   const n=cn(emp);
   $('nomtitle').textContent='💰 '+emp.name;
-  $('nombody').innerHTML=`
+  $('nombody').innerHTML= n.tipo==='hora' ? `
+  <div class="card" style="background:var(--tb);margin-bottom:10px;">
+    <div style="font-size:.72rem;color:var(--td);font-weight:700;">⏱ Pago por horas</div>
+    <div style="font-size:.68rem;color:var(--mu);margin-top:3px;">El valor/hora ya incluye todo. No aplica subsidio de transporte, extras ni deducciones de ley.</div>
+  </div>
+  <div class="nr"><div class="nl">Total horas trabajadas</div><div class="nv">${fmtH(n.hO)}</div></div>
+  <div class="nr"><div class="nl">Valor por hora pactado</div><div class="nv">${f$(n.vH)}/h</div></div>
+  <div class="ntot" style="margin-top:12px;"><span>TOTAL A PAGAR</span><span class="t">${f$(n.neto)}</span></div>
+  ` : `
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
     <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hO)}</div><div class="l">Horas ord.</div></div>
     <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hX)}</div><div class="l">H. extra</div></div>
@@ -694,7 +705,7 @@ function openNom(eid){
   <div class="nr" style="background:#F8F8F8;border-radius:8px;padding:8px;"><div class="nl" style="font-weight:800;">Total bruto</div><div class="nv">${f$(n.bruto)}</div></div>
   <div class="nr"><div class="nl" style="color:var(--da);">(-) Salud 4%</div><div class="nv" style="color:var(--da);">-${f$(n.s4)}</div></div>
   <div class="nr"><div class="nl" style="color:var(--da);">(-) Pensión 4%</div><div class="nv" style="color:var(--da);">-${f$(n.p4)}</div></div>
-  <div class="ntot" style="margin-top:12px;"><span>NETO A PAGAR</span><span class="t">${f$(n.neto)}</span></div>`;
+  <div class="ntot" style="margin-top:12px;"><span>NETO A PAGAR</span><span class="t">${f$(n.neto)}</span></div>\`;
   om('mo-nom');
 }
 
