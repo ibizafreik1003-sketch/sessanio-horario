@@ -295,6 +295,12 @@ function ch(s){
   if(!s||s==='-'||s==='DESCANSO')return 0;
   return s.split('|').reduce((sum,seg)=>sum+chSeg(seg),0);
 }
+function fmtH(h){
+  const hh=Math.floor(h);
+  const mm=Math.round((h-hh)*60);
+  if(mm===0)return hh+'h';
+  return hh+'h '+mm+'min';
+}
 function sc(s){
   if(!s||s==='-')return'spx';
   if(s==='DESCANSO')return'spd';
@@ -353,10 +359,10 @@ function fbInit(){
     }
     return db.collection('weeks').get();
   }).then(snap=>{
-    snap.forEach(d=>{
-      const wdata=d.data().data||{};
-      schedules[d.id]=wdata;
-    });
+    snap.forEach(d=>{schedules[d.id]=d.data().data||{};});
+    return db.collection('pagos').get();
+  }).then(snap=>{
+    snap.forEach(d=>{pagos[d.id]=d.data().data||{};});
     // Realtime: employees
     db.collection('employees').onSnapshot(sn=>{
       E=sn.docs.map(d=>({id:d.id,...d.data()}));
@@ -409,7 +415,7 @@ function rE(){
         <div style="flex:1;">
           <div style="font-weight:800;font-size:.88rem;">${e.name}</div>
           <div class="ero" style="margin:3px 0;">${rh}</div>
-          <div class="eh">⏱ ${eh.toFixed(1)}h · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div>
+          <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div>
         </div>
         <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
       </div>
@@ -450,7 +456,7 @@ function rH(){
     let tot=0;sh.forEach(s=>tot+=ch(s));
     const rh=(emp.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
     tb+=`<tr>
-      <td class="ecc"><div class="enm">${emp.name}</div><div class="ero">${rh}</div><div class="eh">⏱ ${tot.toFixed(1)}h</div></td>`;
+      <td class="ecc"><div class="enm">${emp.name}</div><div class="ero">${rh}</div><div class="eh">⏱ ${fmtH(tot)}</div></td>`;
     sh.forEach((s,i)=>{
       const hrs=ch(s),empty=!s||s==='-';
       const double=s&&s.includes('|');
@@ -588,6 +594,9 @@ function printH(){
 }
 
 // ── NÓMINA ──
+// pagos registrados: {wkKey: {empId: fechaPago}}
+let pagos={};
+
 function cn(emp){
   const sh=curSch()[emp.name]||[];
   let hO=0,hX=0,hD=0;
@@ -598,32 +607,75 @@ function cn(emp){
   });
   const tipo=emp.tipo||'fijo';
   let vH,base;
-  if(tipo==='hora'){vH=emp.vh||6000;base=hO*vH;}
-  else{const sal=emp.sal||SMMLV;vH=sal/240;base=Math.min(hO/48*sal,sal);}
+  if(tipo==='hora'){
+    // valor exacto en horas decimales (minutos exactos)
+    vH=emp.vh||6000;
+    base=hO*vH;
+  } else {
+    const sal=emp.sal||SMMLV;vH=sal/240;
+    base=Math.min(hO/48*sal,sal);
+  }
   const ext=hX*vH*1.25,dom=hD*vH*1.75,bruto=base+ext+dom+AUX_T,s4=bruto*.04,p4=bruto*.04,neto=bruto-s4-p4;
-  return{hO:hO.toFixed(1),hX:hX.toFixed(1),hD:hD.toFixed(1),base,ext,dom,bruto,s4,p4,neto,vH,tipo};
+  return{hO,hX,hD,base,ext,dom,bruto,s4,p4,neto,vH,tipo};
+}
+
+function fbSavePagos(wkk){
+  if(!pagos[wkk])return;
+  db.collection('pagos').doc(wkk).set({data:pagos[wkk]}).catch(e=>console.warn(e));
 }
 function rN(){
-  const se=sortedE();let total=0;
+  const se=sortedE();
+  const k=wkKey();
+  if(!pagos[k])pagos[k]={};
+  const semPagada=se.length>0&&se.every(e=>pagos[k][e.id]);
+  let total=0;
   const rows=se.map(emp=>{
     const n=cn(emp);total+=n.neto;
+    const pagado=!!pagos[k][emp.id];
     return`<div class="nr">
-      <div><div class="nl">${emp.name}</div><div class="ns">${n.hO}h ord · ${n.hX}h ext · ${n.hD}h dom</div></div>
-      <div style="text-align:right;"><div class="nv">${f$(n.neto)}</div>
-      <button class="btn bs nom-det-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;margin-top:3px;">Detalle</button></div>
+      <div>
+        <div class="nl">${emp.name} ${pagado?'<span style="background:#D4EDDA;color:#155724;border-radius:20px;padding:1px 7px;font-size:.6rem;font-weight:700;">✓ Pagado</span>':''}</div>
+        <div class="ns">${fmtH(n.hO)} ord · ${fmtH(n.hX)} ext · ${fmtH(n.hD)} dom</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="nv">${f$(n.neto)}</div>
+        <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px;">
+          <button class="btn bs nom-det-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;">Detalle</button>
+          ${!pagado?`<button class="btn bp pagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;background:#3D7A6E;">✓ Pagar</button>`:`<button class="btn bs unpagar-btn" data-id="${emp.id}" style="padding:3px 9px;font-size:.62rem;width:auto;opacity:.6;">Deshacer</button>`}
+        </div>
+      </div>
     </div>`;
   }).join('');
   $('v2').innerHTML=`<div class="card">
-    <div style="font-size:.82rem;font-weight:700;margin-bottom:4px;">💰 Resumen nómina</div>
-    <div style="font-size:.68rem;color:var(--mu);margin-bottom:12px;">Semana actual · Salud 4% + Pensión 4%</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="font-size:.82rem;font-weight:700;">💰 Nómina — ${wlabel()}</div>
+      ${!semPagada?`<button class="btn bp" id="pagar-todos-btn" style="padding:5px 12px;font-size:.68rem;width:auto;">✓ Pagar todos</button>`:'<span style="font-size:.7rem;background:#D4EDDA;color:#155724;border-radius:20px;padding:3px 10px;font-weight:700;">✅ Semana pagada</span>'}
+    </div>
+    <div style="font-size:.68rem;color:var(--mu);margin-bottom:12px;">Salud 4% + Pensión 4% · Minutos exactos</div>
     ${rows}
     <div class="ntot"><span style="font-size:.78rem;opacity:.8;">Total neto a pagar</span><span class="t">${f$(total)}</span></div>
   </div>
   <div class="card" style="background:var(--tb);">
     <div style="font-size:.7rem;color:var(--td);font-weight:700;">ℹ️ Referencia legal</div>
-    <div style="font-size:.66rem;color:var(--mu);margin-top:4px;">H. extra +25% · Dom/festivo +75% · Aux. transporte ${f$(AUX_T)}/mes</div>
+    <div style="font-size:.66rem;color:var(--mu);margin-top:4px;">H. extra +25% · Dom/festivo +75% · Aux. transporte ${f$(AUX_T)}/mes · Valor calculado sobre minutos exactos trabajados</div>
   </div>`;
   document.querySelectorAll('.nom-det-btn').forEach(btn=>btn.addEventListener('click',()=>openNom(btn.dataset.id)));
+  document.querySelectorAll('.pagar-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const k2=wkKey();if(!pagos[k2])pagos[k2]={};
+    pagos[k2][btn.dataset.id]=new Date().toLocaleDateString('es-CO');
+    fbSavePagos(k2);rN();toast('✅ Pago registrado');
+  }));
+  document.querySelectorAll('.unpagar-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const k2=wkKey();if(pagos[k2])delete pagos[k2][btn.dataset.id];
+    fbSavePagos(k2);rN();toast('↩ Pago deshecho');
+  }));
+  const pagarTodos=$('pagar-todos-btn');
+  if(pagarTodos)pagarTodos.addEventListener('click',()=>{
+    const k2=wkKey();if(!pagos[k2])pagos[k2]={};
+    const fecha=new Date().toLocaleDateString('es-CO');
+    se.forEach(e=>{pagos[k2][e.id]=fecha;});
+    fbSavePagos(k2);rN();toast('✅ Todos marcados como pagados');
+  });
 }
 function openNom(eid){
   const emp=E.find(e=>e.id===eid);if(!emp)return;
@@ -631,13 +683,13 @@ function openNom(eid){
   $('nomtitle').textContent='💰 '+emp.name;
   $('nombody').innerHTML=`
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1.2rem;">${n.hO}</div><div class="l">Horas ord.</div></div>
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1.2rem;">${n.hX}</div><div class="l">H. extra</div></div>
-    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1.2rem;">${n.hD}</div><div class="l">Dom/fest</div></div>
+    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hO)}</div><div class="l">Horas ord.</div></div>
+    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hX)}</div><div class="l">H. extra</div></div>
+    <div class="st" style="text-align:center;border-radius:10px;"><div class="n" style="font-size:1rem;">${fmtH(n.hD)}</div><div class="l">Dom/fest</div></div>
   </div>
-  <div class="nr"><div class="nl">${n.tipo==='hora'?'Base ('+n.hO+'h x '+f$(n.vH)+'/h)':'Salario proporcional'}</div><div class="nv">${f$(n.base)}</div></div>
-  <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${n.hX}h x ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
-  <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${n.hD}h x ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
+  <div class="nr"><div class="nl">${n.tipo==='hora'?'Base ('+fmtH(n.hO)+' x '+f$(n.vH)+'/h)':'Salario proporcional'}</div><div class="nv">${f$(n.base)}</div></div>
+  <div class="nr"><div><div class="nl">Horas extra</div><div class="ns">${fmtH(n.hX)} x ${f$(n.vH*1.25)}/h</div></div><div class="nv">${f$(n.ext)}</div></div>
+  <div class="nr"><div><div class="nl">Dom/festivo</div><div class="ns">${fmtH(n.hD)} x ${f$(n.vH*1.75)}/h</div></div><div class="nv">${f$(n.dom)}</div></div>
   <div class="nr"><div class="nl">Auxilio transporte</div><div class="nv">${f$(AUX_T)}</div></div>
   <div class="nr" style="background:#F8F8F8;border-radius:8px;padding:8px;"><div class="nl" style="font-weight:800;">Total bruto</div><div class="nv">${f$(n.bruto)}</div></div>
   <div class="nr"><div class="nl" style="color:var(--da);">(-) Salud 4%</div><div class="nv" style="color:var(--da);">-${f$(n.s4)}</div></div>
