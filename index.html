@@ -555,6 +555,8 @@ function openHistorial(empId){
     if(!sh)return;
     const totalH=sh.reduce((s,x)=>s+ch(x),0);
     if(totalH===0&&(!pagos[k]||!pagos[k][empId]))return; // skip semanas vacías sin pago
+    const hoy=new Date();hoy.setHours(0,0,0,0);
+    if(new Date(k+'T00:00:00')>hoy&&(!pagos[k]||!pagos[k][empId]))return; // skip semanas futuras copiadas por adelantado, sin pago
     const n=calcNom(emp,sh);
     const pago=(pagos[k]||{})[empId]||{abonado:0,total:n.neto};
     const abonado=pago.abonado||0;
