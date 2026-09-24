@@ -6,6 +6,7 @@
 <title>Sessanio — Gestión de Personal</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--td:#3D7A6E;--tb:#EAF5F3;--tl:#8ECDC4;--go:#D4891A;--gl:#E8A030;--bg:#F4F8F7;--wh:#fff;--tx:#1A2E2A;--mu:#5A7A74;--da:#C0392B;--dl:#FDECEA;--rd:10px;}
@@ -110,6 +111,7 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 </div>
 <div class="view on" id="v0"></div>
 <div class="view" id="v1"></div>
+<div id="caja-banner" style="padding:8px 12px;font-size:.78rem;background:#EAF5F3;border-bottom:1px solid #ccc;"></div>
 <div class="view" id="v2"></div>
 <div class="view" id="v3"></div>
 <div class="view" id="v4"></div>
@@ -241,6 +243,60 @@ firebase.initializeApp({
 });
 const db=firebase.firestore();
 
+/* ---------- Conexión con Caja Sessanio (para no digitar la nómina dos veces) ---------- */
+const CAJA_CONFIG={apiKey:'AIzaSyDi-gv6YmoCmh37QBsVZyS405cdWTFV-RQ',authDomain:'ingresos-y-gastos-sessanio.firebaseapp.com',projectId:'ingresos-y-gastos-sessanio',storageBucket:'ingresos-y-gastos-sessanio.firebasestorage.app',messagingSenderId:'956118320227',appId:'1:956118320227:web:51804f189f1fae32d5a456'};
+const NOM_MAP=[
+  {key:'liliana',name:'LILIANA SUSPES',ciclo:'semana'},
+  {key:'vanessa',name:'VANESSA MURILLO',ciclo:'semana'},
+  {key:'karina',name:'karina',ciclo:'semana'},
+  {key:'juanita',name:'Juanita',ciclo:'semana'},
+  {key:'sisley',name:'Sisley',ciclo:'quincena'},
+  {key:'simon',name:'Simón Barra',ciclo:'quincena'}
+];
+let cajaApp=null,cajaAuthed=false;
+function getCajaApp(){
+  if(!cajaApp){cajaApp=firebase.apps.find(a=>a.name==='caja')||firebase.initializeApp(CAJA_CONFIG,'caja');}
+  return cajaApp;
+}
+function cajaLogin(email,pass){
+  return getCajaApp().auth().signInWithEmailAndPassword(email,pass);
+}
+getCajaApp().auth().onAuthStateChanged(u=>{cajaAuthed=!!u;renderCajaBanner();if(u)pushNomina();});
+function renderCajaBanner(){
+  const el=$('caja-banner');if(!el)return;
+  if(cajaAuthed){el.innerHTML='<span style="color:#2E7D5B">🔗 Conectado con Caja Sessanio — la nómina se calcula sola</span>';return;}
+  el.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'+
+    '<span>🔌 Conectar con Caja Sessanio para no digitar los pagos:</span>'+
+    '<input id="caja-email" placeholder="correo de Caja" style="padding:4px 6px;border:1px solid #ccc;border-radius:6px;font-size:.75rem;">'+
+    '<input id="caja-pass" type="password" placeholder="contraseña" style="padding:4px 6px;border:1px solid #ccc;border-radius:6px;font-size:.75rem;">'+
+    '<button id="caja-connect-btn" style="padding:4px 10px;border-radius:6px;background:var(--td);color:#fff;border:0;font-size:.75rem;">Conectar</button>'+
+    '<span id="caja-err" style="color:#C0392B;font-size:.7rem;"></span></div>';
+  const b=$('caja-connect-btn');if(b)b.onclick=()=>{
+    const em=$('caja-email').value.trim(),ps=$('caja-pass').value;
+    cajaLogin(em,ps).catch(e=>{$('caja-err').textContent='Correo o contraseña incorrectos.';});
+  };
+}
+function pushNomina(){
+  if(!cajaAuthed)return;
+  const cdb=getCajaApp().firestore();
+  NOM_MAP.forEach(map=>{
+    const emp=E.find(e=>e.name===map.name);
+    if(!emp)return;
+    let monto=0,horas=0,periodo='';
+    if(map.ciclo==='semana'){
+      const k=wkKey();const sh=(schedules[k]||{})[emp.name]||Array(7).fill('-');
+      const n=calcNom(emp,sh);monto=n.neto;horas=n.totalH;periodo='Semana '+k;
+    }else{
+      const k0=wkKey(),k1=wkKey(-1);
+      const sh0=(schedules[k0]||{})[emp.name]||Array(7).fill('-');
+      const sh1=(schedules[k1]||{})[emp.name]||Array(7).fill('-');
+      const n0=calcNom(emp,sh0),n1=calcNom(emp,sh1);
+      monto=n0.neto+n1.neto;horas=n0.totalH+n1.totalH;periodo='Quincena '+k1+' a '+k0;
+    }
+    cdb.collection('caja_nomina_calculada').doc(map.key).set({monto:Math.round(monto),horas,periodo,actualizado:Date.now(),origen:'horario'}).catch(e=>console.warn('push nomina',map.key,e));
+  });
+}
+
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const COLORS=['#3D7A6E','#D4891A','#2A6EA6','#7C4A9F','#C0392B','#1A8A8A','#A06020','#3A6A9F','#8A3A5C','#5A5A9F','#8A6A30','#4A6B8F'];
@@ -346,7 +402,7 @@ function fbInit(){
   }).catch(err=>{console.warn(err);sd('#C0392B');gv(0);});
 }
 
-function gv(i){curTab=i;document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));[rE,rH,rN,rNov,rP,rS][i]();}
+function gv(i){curTab=i;document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));const cb=$('caja-banner');if(cb)cb.style.display=(i===2?'block':'none');if(i===2)renderCajaBanner();[rE,rH,rN,rNov,rP,rS][i]();}
 function rc(){[rE,rH,rN,rNov,rP,rS][curTab]();}
 
 // ── NÓMINA CALC ──
@@ -490,6 +546,7 @@ function printH(){
 
 // ── NÓMINA ──
 function rN(){
+  pushNomina();
   const se=sortedE();const k=wkKey();if(!pagos[k])pagos[k]={};
   let totalSem=0;
   const rows=se.map(emp=>{
