@@ -161,8 +161,12 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
       <button class="rt rco role-btn" data-r="Cocinera" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Cocina</button>
       <button class="rt ra role-btn" data-r="Aux" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Aux.</button>
     </div>
-    <label>Color / grupo</label>
-    <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;" id="colorbtns"></div>
+    <label>Grupo</label>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="grupobtns"></div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <input class="fi" id="newgrupo-name" placeholder="Nombre de grupo nuevo (ej: Cocina)" style="flex:1;margin:0;">
+      <button class="btn bo" id="newgrupo-btn" style="width:auto;padding:8px 12px;">+ Crear</button>
+    </div>
     <label>Tipo de pago</label>
     <select class="fi" id="eftipo" style="margin-bottom:8px;">
       <option value="fijo">💰 Salario mensual fijo</option>
@@ -325,7 +329,7 @@ let schedules={};
 // pagos: {wkKey: {empId: {total, abonado, fecha}}}
 let pagos={};
 let saving=false;
-let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={},selColor='',groupLabels={};
+let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={},selGrupo='',GRUPOS=[];
 
 const $=id=>document.getElementById(id);
 const toast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);};
@@ -334,18 +338,16 @@ const om=id=>$(id).classList.add('on');
 const cm=id=>$(id).classList.remove('on');
 const f$=n=>'$'+Math.round(n).toLocaleString('es-CO');
 const sortedE=()=>{
-  const groups={};
-  E.forEach(e=>{const c=e.color||'#999';(groups[c]=groups[c]||[]).push(e);});
-  const gcolors=Object.keys(groups).sort((a,b)=>{
-    const ma=Math.min(...groups[a].map(e=>e.order??0));
-    const mb=Math.min(...groups[b].map(e=>e.order??0));
-    return ma-mb;
-  });
+  const byGrp={};
+  E.forEach(e=>{const g=e.grupoId||'';(byGrp[g]=byGrp[g]||[]).push(e);});
+  const grpOrder=GRUPOS.map(g=>g.id);
+  Object.keys(byGrp).forEach(gid=>{if(!grpOrder.includes(gid))grpOrder.push(gid);});
   let out=[];
-  gcolors.forEach(c=>{out=out.concat(groups[c].slice().sort((a,b)=>(a.order??0)-(b.order??0)));});
+  grpOrder.forEach(gid=>{if(byGrp[gid])out=out.concat(byGrp[gid].slice().sort((a,b)=>(a.order??0)-(b.order??0)));});
   return out;
 };
 const sd=c=>$('sdot').style.background=c;
+function eColor(e){const g=GRUPOS.find(x=>x.id===e.grupoId);return g?g.color:'#999';}
 
 function wkKey(off=0){
   const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
@@ -383,7 +385,7 @@ function fbSaveEmp(emp){
   db.collection('employees').doc(String(emp.id)).set(emp).then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});
 }
 function fbDelEmp(id){db.collection('employees').doc(String(id)).delete().catch(e=>console.warn(e));}
-function fbSaveGroupLabels(){db.collection('meta').doc('groupLabels').set(groupLabels).catch(e=>console.warn(e));}
+function fbSaveGrupos(){db.collection('meta').doc('grupos').set({list:GRUPOS}).catch(e=>console.warn(e));}
 function fbSaveSch(wkk){
   if(!schedules[wkk])return;
   saving=true;sd('#E8A030');
@@ -412,7 +414,7 @@ function fbInit(){
     });
     db.collection('weeks').onSnapshot(sn=>{if(saving)return;sn.forEach(d=>{schedules[d.id]=d.data().data||{};});rc();});
     db.collection('pagos').onSnapshot(sn=>{sn.forEach(d=>{pagos[d.id]=d.data().data||{};});rc();});
-    db.collection('meta').doc('groupLabels').onSnapshot(d=>{groupLabels=d.data()||{};rc();});
+    db.collection('meta').doc('grupos').onSnapshot(d=>{GRUPOS=(d.data()||{}).list||[];rc();});
     sd('#4CAF50');gv(0);
   }).catch(err=>{console.warn(err);sd('#C0392B');gv(0);});
 }
@@ -442,13 +444,18 @@ function rE(){
   <button class="btn bp" id="new-emp-btn" style="margin-bottom:12px;">+ Nuevo colaborador</button>`;
 
   const groups={};
-  se.forEach(e=>{const c=e.color||'#999';(groups[c]=groups[c]||[]).push(e);});
-  Object.keys(groups).forEach(color=>{
-    const gEmps=groups[color];
+  se.forEach(e=>{const g=e.grupoId||'';(groups[g]=groups[g]||[]).push(e);});
+  const gOrder=GRUPOS.map(g=>g.id);
+  Object.keys(groups).forEach(gid=>{if(!gOrder.includes(gid))gOrder.push(gid);});
+  gOrder.forEach(gid=>{
+    if(!groups[gid])return;
+    const gEmps=groups[gid];
+    const gDef=GRUPOS.find(g=>g.id===gid);
+    const gColor=gDef?gDef.color:'#999',gName=gDef?gDef.name:'Sin grupo';
     h+=`<div style="display:flex;align-items:center;gap:7px;margin:16px 0 6px;">
-      <span style="width:13px;height:13px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
-      <span style="font-weight:800;font-size:.8rem;color:var(--td);flex:1;">${groupLabels[color]||'Grupo sin nombre'}</span>
-      <button class="grp-edit-btn" data-color="${color}" style="background:none;border:none;cursor:pointer;font-size:.78rem;">✏️</button>
+      <span style="width:13px;height:13px;border-radius:50%;background:${gColor};display:inline-block;flex-shrink:0;"></span>
+      <span style="font-weight:800;font-size:.8rem;color:var(--td);flex:1;">${gName}</span>
+      ${gDef?`<button class="grp-edit-btn" data-id="${gid}" style="background:none;border:none;cursor:pointer;font-size:.78rem;">✏️</button>`:''}
     </div>`;
     gEmps.forEach((e,idx)=>{
       let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
@@ -458,7 +465,7 @@ function rE(){
           <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
           <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===gEmps.length-1?'disabled':''}>↓</button>
         </div>
-        <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
+        <div class="av" style="background:${gColor};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
         <div style="flex:1;"><div style="font-weight:800;font-size:.88rem;">${e.name}</div>
         <div class="ero" style="margin:3px 0;">${rh}</div>
         <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div></div>
@@ -471,17 +478,17 @@ function rE(){
   $('new-emp-btn').addEventListener('click',()=>openEmpModal(null));
   document.querySelectorAll('.edit-emp-btn').forEach(btn=>btn.addEventListener('click',()=>openEmpModal(btn.dataset.id)));
   document.querySelectorAll('.grp-edit-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const color=btn.dataset.color,cur=groupLabels[color]||'';
-    const name=prompt('Nombre del grupo:',cur);
+    const gDef=GRUPOS.find(g=>g.id===btn.dataset.id);if(!gDef)return;
+    const name=prompt('Nombre del grupo:',gDef.name);
     if(name===null)return;
-    groupLabels[color]=name.trim()||'Grupo sin nombre';
-    fbSaveGroupLabels();rE();
+    gDef.name=name.trim()||gDef.name;
+    fbSaveGrupos();rE();
   }));
   document.querySelectorAll('.ordbt').forEach(btn=>btn.addEventListener('click',()=>{
     if(btn.disabled)return;
     const emp=E.find(x=>x.id===btn.dataset.id);if(!emp)return;
-    const color=emp.color||'#999';
-    const grp=sortedE().filter(e=>(e.color||'#999')===color);
+    const gid=emp.grupoId||'';
+    const grp=sortedE().filter(e=>(e.grupoId||'')===gid);
     const idx=grp.findIndex(e=>e.id===emp.id);const dir=+btn.dataset.dir;const ni=idx+dir;
     if(ni<0||ni>=grp.length)return;
     const ao=grp[idx].order??idx,bo=grp[ni].order??ni;
@@ -758,7 +765,7 @@ function calcProp(){
     let eh=0;(sch[emp.name]||[]).forEach(s=>eh+=ch(s));
     const pct=totalH>0?(eh/totalH):0,monto=repartir*pct;
     rows+=`<div class="nr"><div style="display:flex;align-items:center;gap:8px;">
-      <div class="av" style="background:${emp.color};width:26px;height:26px;font-size:.68rem;">${emp.name[0]}</div>
+      <div class="av" style="background:${eColor(emp)};width:26px;height:26px;font-size:.68rem;">${emp.name[0]}</div>
       <div><div class="nl">${emp.name}</div><div class="ns">${fmtH(eh)} · ${(pct*100).toFixed(1)}%</div></div>
     </div><div class="nv">${f$(monto)}</div></div>`;
   });
@@ -776,23 +783,25 @@ function calcProp(){
 function rS(){
   const se=sortedE();
   $('v5').innerHTML=`<div class="card"><div style="font-weight:700;font-size:.84rem;margin-bottom:10px;">🔔 Solicitudes de disponibilidad</div>
-  ${se.map(e=>`<div class="erow"><div class="av" style="background:${e.color};width:28px;height:28px;font-size:.7rem;">${e.name[0]}</div>
+  ${se.map(e=>`<div class="erow"><div class="av" style="background:${eColor(e)};width:28px;height:28px;font-size:.7rem;">${e.name[0]}</div>
   <div style="flex:1;"><div style="font-weight:600;font-size:.82rem;">${e.name}</div></div>
   <span class="badge bpnd">⏳ Pendiente</span></div>`).join('')}</div>`;
 }
 
 // ── EMP MODAL ──
-function renderColorBtns(){
-  $('colorbtns').innerHTML=COLORS.map(c=>`<button class="colorbt" data-c="${c}" style="width:30px;height:30px;border-radius:50%;background:${c};border:3px solid transparent;cursor:pointer;padding:0;"></button>`).join('');
-  document.querySelectorAll('.colorbt').forEach(b=>b.addEventListener('click',()=>{
-    selColor=b.dataset.c;
-    document.querySelectorAll('.colorbt').forEach(x=>x.style.border='3px solid transparent');
-    b.style.border='3px solid var(--td)';
+function renderGrupoBtns(){
+  const chips=GRUPOS.map(g=>`<button class="grupobt" data-id="${g.id}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;border:2px solid transparent;background:#fff;cursor:pointer;font-size:.76rem;font-weight:600;color:var(--tx);">
+    <span style="width:10px;height:10px;border-radius:50%;background:${g.color};display:inline-block;"></span>${g.name}</button>`).join('');
+  $('grupobtns').innerHTML=chips+`<button class="grupobt" data-id="" style="padding:6px 11px;border-radius:20px;border:2px dashed var(--tb);background:#fff;cursor:pointer;font-size:.76rem;color:var(--mu);">Sin grupo</button>`;
+  document.querySelectorAll('.grupobt').forEach(b=>b.addEventListener('click',()=>{
+    selGrupo=b.dataset.id;
+    document.querySelectorAll('.grupobt').forEach(x=>x.style.border=x.dataset.id?'2px solid transparent':'2px dashed var(--tb)');
+    b.style.border='2px solid var(--td)';
   }));
+  const sel=document.querySelector('.grupobt[data-id="'+selGrupo+'"]');if(sel)sel.style.border='2px solid var(--td)';
 }
 function openEmpModal(id){
   selR=[];document.querySelectorAll('.role-btn').forEach(b=>b.style.border='1px solid transparent');
-  renderColorBtns();
   if(id!=null){
     const e=E.find(x=>x.id===id);if(!e)return;
     $('moet').textContent='✏️ '+e.name;$('efid').value=id;$('efname').value=e.name;
@@ -800,17 +809,24 @@ function openEmpModal(id){
     $('efpref').value=e.pref||'Flexible';$('efnotes').value=e.notes||'';toggleTipo();
     selR=[...(e.roles||[])];
     selR.forEach(r=>{const b=document.querySelector('.role-btn[data-r="'+r+'"]');if(b)b.style.border='2px solid var(--td)';});
-    selColor=e.color||COLORS[0];
-    const cb=document.querySelector('.colorbt[data-c="'+selColor+'"]');if(cb)cb.style.border='3px solid var(--td)';
+    selGrupo=e.grupoId||'';
     $('del-emp-btn').style.display='block';
   }else{
     $('moet').textContent='👤 Nuevo colaborador';$('efid').value='';$('efname').value='';
     $('eftipo').value='fijo';$('efsal').value=SMMLV;$('efvh').value=6000;$('efpref').value='Flexible';$('efnotes').value='';
     toggleTipo();$('del-emp-btn').style.display='none';
-    selColor=COLORS[E.length%COLORS.length];
-    const cb=document.querySelector('.colorbt[data-c="'+selColor+'"]');if(cb)cb.style.border='3px solid var(--td)';
+    selGrupo='';
   }
+  $('newgrupo-name').value='';
+  renderGrupoBtns();
   om('mo-emp');
+}
+function crearGrupo(){
+  const name=$('newgrupo-name').value.trim();if(!name){toast('⚠️ Escribe un nombre de grupo');return;}
+  const g={id:String(Date.now()),name,color:COLORS[GRUPOS.length%COLORS.length]};
+  GRUPOS.push(g);fbSaveGrupos();
+  selGrupo=g.id;$('newgrupo-name').value='';
+  renderGrupoBtns();
 }
 function saveEmp(){
   const name=$('efname').value.trim();if(!name){toast('⚠️ Nombre obligatorio');return;}
@@ -818,11 +834,11 @@ function saveEmp(){
   const id=$('efid').value,tipo=$('eftipo').value,sal=+$('efsal').value||SMMLV,vh=+$('efvh').value||6000,pref=$('efpref').value,notes=$('efnotes').value.trim();
   if(id){
     const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
-    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes,color:selColor||e.color});
+    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes,grupoId:selGrupo||''});
     if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}});}
     fbSaveEmp(e);toast('✅ '+name+' actualizado');
   }else{
-    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:selColor||COLORS[E.length%COLORS.length],order:E.length};
+    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,grupoId:selGrupo||'',order:E.length};
     E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
     fbSaveEmp(nc);toast('✅ '+name+' agregado');
   }
@@ -856,6 +872,7 @@ $('close-mo-abono').addEventListener('click',()=>cm('mo-abono'));
 $('close-mo-copy').addEventListener('click',()=>cm('mo-copy'));
 $('cfm-cancel').addEventListener('click',()=>cm('cfm'));
 $('save-emp-btn').addEventListener('click',saveEmp);
+$('newgrupo-btn').addEventListener('click',crearGrupo);
 $('del-emp-btn').addEventListener('click',()=>{
   const id=$('efid').value;if(!id)return;const e=E.find(x=>x.id===id);if(!e)return;
   delId=id;$('cfmmsg').textContent='Se eliminará a "'+e.name+'" y todos sus turnos.';om('cfm');
