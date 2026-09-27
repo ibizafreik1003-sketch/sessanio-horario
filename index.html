@@ -161,6 +161,8 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
       <button class="rt rco role-btn" data-r="Cocinera" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Cocina</button>
       <button class="rt ra role-btn" data-r="Aux" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Aux.</button>
     </div>
+    <label>Color / grupo</label>
+    <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;" id="colorbtns"></div>
     <label>Tipo de pago</label>
     <select class="fi" id="eftipo" style="margin-bottom:8px;">
       <option value="fijo">💰 Salario mensual fijo</option>
@@ -323,7 +325,7 @@ let schedules={};
 // pagos: {wkKey: {empId: {total, abonado, fecha}}}
 let pagos={};
 let saving=false;
-let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={};
+let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={},selColor='',groupLabels={};
 
 const $=id=>document.getElementById(id);
 const toast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);};
@@ -331,7 +333,18 @@ const tick=()=>$('clk').textContent=new Date().toLocaleDateString('es-CO',{weekd
 const om=id=>$(id).classList.add('on');
 const cm=id=>$(id).classList.remove('on');
 const f$=n=>'$'+Math.round(n).toLocaleString('es-CO');
-const sortedE=()=>[...E].sort((a,b)=>(a.order||0)-(b.order||0));
+const sortedE=()=>{
+  const groups={};
+  E.forEach(e=>{const c=e.color||'#999';(groups[c]=groups[c]||[]).push(e);});
+  const gcolors=Object.keys(groups).sort((a,b)=>{
+    const ma=Math.min(...groups[a].map(e=>e.order??0));
+    const mb=Math.min(...groups[b].map(e=>e.order??0));
+    return ma-mb;
+  });
+  let out=[];
+  gcolors.forEach(c=>{out=out.concat(groups[c].slice().sort((a,b)=>(a.order??0)-(b.order??0)));});
+  return out;
+};
 const sd=c=>$('sdot').style.background=c;
 
 function wkKey(off=0){
@@ -370,6 +383,7 @@ function fbSaveEmp(emp){
   db.collection('employees').doc(String(emp.id)).set(emp).then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});
 }
 function fbDelEmp(id){db.collection('employees').doc(String(id)).delete().catch(e=>console.warn(e));}
+function fbSaveGroupLabels(){db.collection('meta').doc('groupLabels').set(groupLabels).catch(e=>console.warn(e));}
 function fbSaveSch(wkk){
   if(!schedules[wkk])return;
   saving=true;sd('#E8A030');
@@ -398,6 +412,7 @@ function fbInit(){
     });
     db.collection('weeks').onSnapshot(sn=>{if(saving)return;sn.forEach(d=>{schedules[d.id]=d.data().data||{};});rc();});
     db.collection('pagos').onSnapshot(sn=>{sn.forEach(d=>{pagos[d.id]=d.data().data||{};});rc();});
+    db.collection('meta').doc('groupLabels').onSnapshot(d=>{groupLabels=d.data()||{};rc();});
     sd('#4CAF50');gv(0);
   }).catch(err=>{console.warn(err);sd('#C0392B');gv(0);});
 }
@@ -425,30 +440,53 @@ function rE(){
   const se=sortedE();let tot=0;se.forEach(e=>{(curSch()[e.name]||[]).forEach(s=>tot+=ch(s));});
   let h=`<div class="sr"><div class="st"><div class="n">${se.length}</div><div class="l">Colaboradores</div></div><div class="st go"><div class="n">${fmtH(tot)}</div><div class="l">Horas semana</div></div></div>
   <button class="btn bp" id="new-emp-btn" style="margin-bottom:12px;">+ Nuevo colaborador</button>`;
-  se.forEach((e,idx)=>{
-    let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
-    const rh=(e.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
-    h+=`<div class="card" style="padding:11px;"><div style="display:flex;align-items:center;gap:8px;">
-      <div class="ordb">
-        <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
-        <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===se.length-1?'disabled':''}>↓</button>
-      </div>
-      <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
-      <div style="flex:1;"><div style="font-weight:800;font-size:.88rem;">${e.name}</div>
-      <div class="ero" style="margin:3px 0;">${rh}</div>
-      <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div></div>
-      <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
-    </div>${e.notes?`<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 ${e.notes}</div>`:''}</div>`;
+
+  const groups={};
+  se.forEach(e=>{const c=e.color||'#999';(groups[c]=groups[c]||[]).push(e);});
+  Object.keys(groups).forEach(color=>{
+    const gEmps=groups[color];
+    h+=`<div style="display:flex;align-items:center;gap:7px;margin:16px 0 6px;">
+      <span style="width:13px;height:13px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+      <span style="font-weight:800;font-size:.8rem;color:var(--td);flex:1;">${groupLabels[color]||'Grupo sin nombre'}</span>
+      <button class="grp-edit-btn" data-color="${color}" style="background:none;border:none;cursor:pointer;font-size:.78rem;">✏️</button>
+    </div>`;
+    gEmps.forEach((e,idx)=>{
+      let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
+      const rh=(e.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
+      h+=`<div class="card" style="padding:11px;"><div style="display:flex;align-items:center;gap:8px;">
+        <div class="ordb">
+          <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
+          <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===gEmps.length-1?'disabled':''}>↓</button>
+        </div>
+        <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
+        <div style="flex:1;"><div style="font-weight:800;font-size:.88rem;">${e.name}</div>
+        <div class="ero" style="margin:3px 0;">${rh}</div>
+        <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div></div>
+        <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
+      </div>${e.notes?`<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 ${e.notes}</div>`:''}</div>`;
+    });
   });
+
   $('v0').innerHTML=h;
   $('new-emp-btn').addEventListener('click',()=>openEmpModal(null));
   document.querySelectorAll('.edit-emp-btn').forEach(btn=>btn.addEventListener('click',()=>openEmpModal(btn.dataset.id)));
+  document.querySelectorAll('.grp-edit-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const color=btn.dataset.color,cur=groupLabels[color]||'';
+    const name=prompt('Nombre del grupo:',cur);
+    if(name===null)return;
+    groupLabels[color]=name.trim()||'Grupo sin nombre';
+    fbSaveGroupLabels();rE();
+  }));
   document.querySelectorAll('.ordbt').forEach(btn=>btn.addEventListener('click',()=>{
     if(btn.disabled)return;
-    const se2=sortedE();const idx=se2.findIndex(e=>e.id===btn.dataset.id);const dir=+btn.dataset.dir;const ni=idx+dir;
-    if(ni<0||ni>=se2.length)return;
-    const ao=se2[idx].order||idx,bo=se2[ni].order||ni;se2[idx].order=bo;se2[ni].order=ao;
-    fbSaveEmp(se2[idx]);fbSaveEmp(se2[ni]);rE();
+    const emp=E.find(x=>x.id===btn.dataset.id);if(!emp)return;
+    const color=emp.color||'#999';
+    const grp=sortedE().filter(e=>(e.color||'#999')===color);
+    const idx=grp.findIndex(e=>e.id===emp.id);const dir=+btn.dataset.dir;const ni=idx+dir;
+    if(ni<0||ni>=grp.length)return;
+    const ao=grp[idx].order??idx,bo=grp[ni].order??ni;
+    grp[idx].order=bo;grp[ni].order=ao;
+    fbSaveEmp(grp[idx]);fbSaveEmp(grp[ni]);rE();
   }));
 }
 
@@ -744,8 +782,17 @@ function rS(){
 }
 
 // ── EMP MODAL ──
+function renderColorBtns(){
+  $('colorbtns').innerHTML=COLORS.map(c=>`<button class="colorbt" data-c="${c}" style="width:30px;height:30px;border-radius:50%;background:${c};border:3px solid transparent;cursor:pointer;padding:0;"></button>`).join('');
+  document.querySelectorAll('.colorbt').forEach(b=>b.addEventListener('click',()=>{
+    selColor=b.dataset.c;
+    document.querySelectorAll('.colorbt').forEach(x=>x.style.border='3px solid transparent');
+    b.style.border='3px solid var(--td)';
+  }));
+}
 function openEmpModal(id){
   selR=[];document.querySelectorAll('.role-btn').forEach(b=>b.style.border='1px solid transparent');
+  renderColorBtns();
   if(id!=null){
     const e=E.find(x=>x.id===id);if(!e)return;
     $('moet').textContent='✏️ '+e.name;$('efid').value=id;$('efname').value=e.name;
@@ -753,11 +800,15 @@ function openEmpModal(id){
     $('efpref').value=e.pref||'Flexible';$('efnotes').value=e.notes||'';toggleTipo();
     selR=[...(e.roles||[])];
     selR.forEach(r=>{const b=document.querySelector('.role-btn[data-r="'+r+'"]');if(b)b.style.border='2px solid var(--td)';});
+    selColor=e.color||COLORS[0];
+    const cb=document.querySelector('.colorbt[data-c="'+selColor+'"]');if(cb)cb.style.border='3px solid var(--td)';
     $('del-emp-btn').style.display='block';
   }else{
     $('moet').textContent='👤 Nuevo colaborador';$('efid').value='';$('efname').value='';
     $('eftipo').value='fijo';$('efsal').value=SMMLV;$('efvh').value=6000;$('efpref').value='Flexible';$('efnotes').value='';
     toggleTipo();$('del-emp-btn').style.display='none';
+    selColor=COLORS[E.length%COLORS.length];
+    const cb=document.querySelector('.colorbt[data-c="'+selColor+'"]');if(cb)cb.style.border='3px solid var(--td)';
   }
   om('mo-emp');
 }
@@ -767,11 +818,11 @@ function saveEmp(){
   const id=$('efid').value,tipo=$('eftipo').value,sal=+$('efsal').value||SMMLV,vh=+$('efvh').value||6000,pref=$('efpref').value,notes=$('efnotes').value.trim();
   if(id){
     const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
-    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes});
+    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes,color:selColor||e.color});
     if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}});}
     fbSaveEmp(e);toast('✅ '+name+' actualizado');
   }else{
-    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:COLORS[E.length%COLORS.length],order:E.length};
+    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:selColor||COLORS[E.length%COLORS.length],order:E.length};
     E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
     fbSaveEmp(nc);toast('✅ '+name+' agregado');
   }
