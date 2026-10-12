@@ -6,7 +6,6 @@
 <title>Sessanio — Gestión de Personal</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--td:#3D7A6E;--tb:#EAF5F3;--tl:#8ECDC4;--go:#D4891A;--gl:#E8A030;--bg:#F4F8F7;--wh:#fff;--tx:#1A2E2A;--mu:#5A7A74;--da:#C0392B;--dl:#FDECEA;--rd:10px;}
@@ -111,7 +110,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
 </div>
 <div class="view on" id="v0"></div>
 <div class="view" id="v1"></div>
-<div id="caja-banner" style="padding:8px 12px;font-size:.78rem;background:#EAF5F3;border-bottom:1px solid #ccc;"></div>
 <div class="view" id="v2"></div>
 <div class="view" id="v3"></div>
 <div class="view" id="v4"></div>
@@ -160,12 +158,6 @@ label{display:block;font-size:.71rem;font-weight:700;color:var(--tx);margin-bott
       <button class="rt rc2 role-btn" data-r="Cajera" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Cajero/a</button>
       <button class="rt rco role-btn" data-r="Cocinera" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Cocina</button>
       <button class="rt ra role-btn" data-r="Aux" style="cursor:pointer;padding:5px 10px;border:2px solid transparent;">Aux.</button>
-    </div>
-    <label>Grupo</label>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="grupobtns"></div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;">
-      <input class="fi" id="newgrupo-name" placeholder="Nombre de grupo nuevo (ej: Cocina)" style="flex:1;margin:0;">
-      <button class="btn bo" id="newgrupo-btn" style="width:auto;padding:8px 12px;">+ Crear</button>
     </div>
     <label>Tipo de pago</label>
     <select class="fi" id="eftipo" style="margin-bottom:8px;">
@@ -249,60 +241,6 @@ firebase.initializeApp({
 });
 const db=firebase.firestore();
 
-/* ---------- Conexión con Caja Sessanio (para no digitar la nómina dos veces) ---------- */
-const CAJA_CONFIG={apiKey:'AIzaSyDi-gv6YmoCmh37QBsVZyS405cdWTFV-RQ',authDomain:'ingresos-y-gastos-sessanio.firebaseapp.com',projectId:'ingresos-y-gastos-sessanio',storageBucket:'ingresos-y-gastos-sessanio.firebasestorage.app',messagingSenderId:'956118320227',appId:'1:956118320227:web:51804f189f1fae32d5a456'};
-const NOM_MAP=[
-  {key:'liliana',name:'LILIANA SUSPES',ciclo:'semana'},
-  {key:'vanessa',name:'VANESSA MURILLO',ciclo:'semana'},
-  {key:'karina',name:'karina',ciclo:'semana'},
-  {key:'juanita',name:'Juanita',ciclo:'semana'},
-  {key:'sisley',name:'Sisley',ciclo:'quincena'},
-  {key:'simon',name:'Simón Barra',ciclo:'quincena'}
-];
-let cajaApp=null,cajaAuthed=false;
-function getCajaApp(){
-  if(!cajaApp){cajaApp=firebase.apps.find(a=>a.name==='caja')||firebase.initializeApp(CAJA_CONFIG,'caja');}
-  return cajaApp;
-}
-function cajaLogin(email,pass){
-  return getCajaApp().auth().signInWithEmailAndPassword(email,pass);
-}
-getCajaApp().auth().onAuthStateChanged(u=>{cajaAuthed=!!u;renderCajaBanner();if(u)pushNomina();});
-function renderCajaBanner(){
-  const el=$('caja-banner');if(!el)return;
-  if(cajaAuthed){el.innerHTML='<span style="color:#2E7D5B">🔗 Conectado con Caja Sessanio — la nómina se calcula sola</span>';return;}
-  el.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'+
-    '<span>🔌 Conectar con Caja Sessanio para no digitar los pagos:</span>'+
-    '<input id="caja-email" placeholder="correo de Caja" style="padding:4px 6px;border:1px solid #ccc;border-radius:6px;font-size:.75rem;">'+
-    '<input id="caja-pass" type="password" placeholder="contraseña" style="padding:4px 6px;border:1px solid #ccc;border-radius:6px;font-size:.75rem;">'+
-    '<button id="caja-connect-btn" style="padding:4px 10px;border-radius:6px;background:var(--td);color:#fff;border:0;font-size:.75rem;">Conectar</button>'+
-    '<span id="caja-err" style="color:#C0392B;font-size:.7rem;"></span></div>';
-  const b=$('caja-connect-btn');if(b)b.onclick=()=>{
-    const em=$('caja-email').value.trim(),ps=$('caja-pass').value;
-    cajaLogin(em,ps).catch(e=>{$('caja-err').textContent='Correo o contraseña incorrectos.';});
-  };
-}
-function pushNomina(){
-  if(!cajaAuthed)return;
-  const cdb=getCajaApp().firestore();
-  NOM_MAP.forEach(map=>{
-    const emp=E.find(e=>e.name===map.name);
-    if(!emp)return;
-    let monto=0,horas=0,periodo='';
-    if(map.ciclo==='semana'){
-      const k=wkKey();const sh=(schedules[k]||{})[emp.name]||Array(7).fill('-');
-      const n=calcNom(emp,sh);monto=n.neto;horas=n.totalH;periodo='Semana '+k;
-    }else{
-      const k0=wkKey(),k1=wkKey(-1);
-      const sh0=(schedules[k0]||{})[emp.name]||Array(7).fill('-');
-      const sh1=(schedules[k1]||{})[emp.name]||Array(7).fill('-');
-      const n0=calcNom(emp,sh0),n1=calcNom(emp,sh1);
-      monto=n0.neto+n1.neto;horas=n0.totalH+n1.totalH;periodo='Quincena '+k1+' a '+k0;
-    }
-    cdb.collection('caja_nomina_calculada').doc(map.key).set({monto:Math.round(monto),horas,periodo,actualizado:Date.now(),origen:'horario'}).catch(e=>console.warn('push nomina',map.key,e));
-  });
-}
-
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const COLORS=['#3D7A6E','#D4891A','#2A6EA6','#7C4A9F','#C0392B','#1A8A8A','#A06020','#3A6A9F','#8A3A5C','#5A5A9F','#8A6A30','#4A6B8F'];
@@ -329,7 +267,7 @@ let schedules={};
 // pagos: {wkKey: {empId: {total, abonado, fecha}}}
 let pagos={};
 let saving=false;
-let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={},selGrupo='',GRUPOS=[];
+let wk=0,curTab=0,delId=null,pCtx=null,selR=[],copyWkOff=1,undoStack={};
 
 const $=id=>document.getElementById(id);
 const toast=msg=>{const t=$('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);};
@@ -337,17 +275,8 @@ const tick=()=>$('clk').textContent=new Date().toLocaleDateString('es-CO',{weekd
 const om=id=>$(id).classList.add('on');
 const cm=id=>$(id).classList.remove('on');
 const f$=n=>'$'+Math.round(n).toLocaleString('es-CO');
-const sortedE=()=>{
-  const byGrp={};
-  E.forEach(e=>{const g=e.grupoId||'';(byGrp[g]=byGrp[g]||[]).push(e);});
-  const grpOrder=GRUPOS.map(g=>g.id);
-  Object.keys(byGrp).forEach(gid=>{if(!grpOrder.includes(gid))grpOrder.push(gid);});
-  let out=[];
-  grpOrder.forEach(gid=>{if(byGrp[gid])out=out.concat(byGrp[gid].slice().sort((a,b)=>(a.order??0)-(b.order??0)));});
-  return out;
-};
+const sortedE=()=>[...E].sort((a,b)=>(a.order||0)-(b.order||0));
 const sd=c=>$('sdot').style.background=c;
-function eColor(e){const g=GRUPOS.find(x=>x.id===e.grupoId);return g?g.color:'#999';}
 
 function wkKey(off=0){
   const n=new Date();n.setDate(n.getDate()+(wk+off)*7);
@@ -385,7 +314,6 @@ function fbSaveEmp(emp){
   db.collection('employees').doc(String(emp.id)).set(emp).then(()=>sd('#4CAF50')).catch(e=>{sd('#C0392B');console.warn(e);});
 }
 function fbDelEmp(id){db.collection('employees').doc(String(id)).delete().catch(e=>console.warn(e));}
-function fbSaveGrupos(){db.collection('meta').doc('grupos').set({list:GRUPOS}).catch(e=>console.warn(e));}
 function fbSaveSch(wkk){
   if(!schedules[wkk])return;
   saving=true;sd('#E8A030');
@@ -414,12 +342,11 @@ function fbInit(){
     });
     db.collection('weeks').onSnapshot(sn=>{if(saving)return;sn.forEach(d=>{schedules[d.id]=d.data().data||{};});rc();});
     db.collection('pagos').onSnapshot(sn=>{sn.forEach(d=>{pagos[d.id]=d.data().data||{};});rc();});
-    db.collection('meta').doc('grupos').onSnapshot(d=>{GRUPOS=(d.data()||{}).list||[];rc();});
     sd('#4CAF50');gv(0);
   }).catch(err=>{console.warn(err);sd('#C0392B');gv(0);});
 }
 
-function gv(i){curTab=i;document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));const cb=$('caja-banner');if(cb)cb.style.display=(i===2?'block':'none');if(i===2)renderCajaBanner();[rE,rH,rN,rNov,rP,rS][i]();}
+function gv(i){curTab=i;document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('on',j===i));document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));[rE,rH,rN,rNov,rP,rS][i]();}
 function rc(){[rE,rH,rN,rNov,rP,rS][curTab]();}
 
 // ── NÓMINA CALC ──
@@ -442,58 +369,30 @@ function rE(){
   const se=sortedE();let tot=0;se.forEach(e=>{(curSch()[e.name]||[]).forEach(s=>tot+=ch(s));});
   let h=`<div class="sr"><div class="st"><div class="n">${se.length}</div><div class="l">Colaboradores</div></div><div class="st go"><div class="n">${fmtH(tot)}</div><div class="l">Horas semana</div></div></div>
   <button class="btn bp" id="new-emp-btn" style="margin-bottom:12px;">+ Nuevo colaborador</button>`;
-
-  const groups={};
-  se.forEach(e=>{const g=e.grupoId||'';(groups[g]=groups[g]||[]).push(e);});
-  const gOrder=GRUPOS.map(g=>g.id);
-  Object.keys(groups).forEach(gid=>{if(!gOrder.includes(gid))gOrder.push(gid);});
-  gOrder.forEach(gid=>{
-    if(!groups[gid])return;
-    const gEmps=groups[gid];
-    const gDef=GRUPOS.find(g=>g.id===gid);
-    const gColor=gDef?gDef.color:'#999',gName=gDef?gDef.name:'Sin grupo';
-    h+=`<div style="display:flex;align-items:center;gap:7px;margin:16px 0 6px;">
-      <span style="width:13px;height:13px;border-radius:50%;background:${gColor};display:inline-block;flex-shrink:0;"></span>
-      <span style="font-weight:800;font-size:.8rem;color:var(--td);flex:1;">${gName}</span>
-      ${gDef?`<button class="grp-edit-btn" data-id="${gid}" style="background:none;border:none;cursor:pointer;font-size:.78rem;">✏️</button>`:''}
-    </div>`;
-    gEmps.forEach((e,idx)=>{
-      let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
-      const rh=(e.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
-      h+=`<div class="card" style="padding:11px;"><div style="display:flex;align-items:center;gap:8px;">
-        <div class="ordb">
-          <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
-          <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===gEmps.length-1?'disabled':''}>↓</button>
-        </div>
-        <div class="av" style="background:${gColor};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
-        <div style="flex:1;"><div style="font-weight:800;font-size:.88rem;">${e.name}</div>
-        <div class="ero" style="margin:3px 0;">${rh}</div>
-        <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div></div>
-        <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
-      </div>${e.notes?`<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 ${e.notes}</div>`:''}</div>`;
-    });
+  se.forEach((e,idx)=>{
+    let eh=0;(curSch()[e.name]||[]).forEach(s=>eh+=ch(s));
+    const rh=(e.roles||[]).map(r=>`<span class="rt ${RCSS[r]||'ra'}">${RLBL[r]||r}</span>`).join(' ');
+    h+=`<div class="card" style="padding:11px;"><div style="display:flex;align-items:center;gap:8px;">
+      <div class="ordb">
+        <button class="ordbt" data-id="${e.id}" data-dir="-1" ${idx===0?'disabled':''}>↑</button>
+        <button class="ordbt" data-id="${e.id}" data-dir="1" ${idx===se.length-1?'disabled':''}>↓</button>
+      </div>
+      <div class="av" style="background:${e.color};width:38px;height:38px;font-size:.95rem;">${e.name[0]}</div>
+      <div style="flex:1;"><div style="font-weight:800;font-size:.88rem;">${e.name}</div>
+      <div class="ero" style="margin:3px 0;">${rh}</div>
+      <div class="eh">⏱ ${fmtH(eh)} · ${e.tipo==='hora'?f$(e.vh||6000)+'/h':'Sal. '+f$(e.sal||SMMLV)+'/mes'}</div></div>
+      <button class="btn bs edit-emp-btn" data-id="${e.id}" style="padding:6px 9px;width:auto;font-size:.7rem;">✏️</button>
+    </div>${e.notes?`<div style="font-size:.66rem;color:var(--mu);font-style:italic;margin-top:6px;padding-left:62px;">📝 ${e.notes}</div>`:''}</div>`;
   });
-
   $('v0').innerHTML=h;
   $('new-emp-btn').addEventListener('click',()=>openEmpModal(null));
   document.querySelectorAll('.edit-emp-btn').forEach(btn=>btn.addEventListener('click',()=>openEmpModal(btn.dataset.id)));
-  document.querySelectorAll('.grp-edit-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const gDef=GRUPOS.find(g=>g.id===btn.dataset.id);if(!gDef)return;
-    const name=prompt('Nombre del grupo:',gDef.name);
-    if(name===null)return;
-    gDef.name=name.trim()||gDef.name;
-    fbSaveGrupos();rE();
-  }));
   document.querySelectorAll('.ordbt').forEach(btn=>btn.addEventListener('click',()=>{
     if(btn.disabled)return;
-    const emp=E.find(x=>x.id===btn.dataset.id);if(!emp)return;
-    const gid=emp.grupoId||'';
-    const grp=sortedE().filter(e=>(e.grupoId||'')===gid);
-    const idx=grp.findIndex(e=>e.id===emp.id);const dir=+btn.dataset.dir;const ni=idx+dir;
-    if(ni<0||ni>=grp.length)return;
-    const ao=grp[idx].order??idx,bo=grp[ni].order??ni;
-    grp[idx].order=bo;grp[ni].order=ao;
-    fbSaveEmp(grp[idx]);fbSaveEmp(grp[ni]);rE();
+    const se2=sortedE();const idx=se2.findIndex(e=>e.id===btn.dataset.id);const dir=+btn.dataset.dir;const ni=idx+dir;
+    if(ni<0||ni>=se2.length)return;
+    const ao=se2[idx].order||idx,bo=se2[ni].order||ni;se2[idx].order=bo;se2[ni].order=ao;
+    fbSaveEmp(se2[idx]);fbSaveEmp(se2[ni]);rE();
   }));
 }
 
@@ -591,7 +490,6 @@ function printH(){
 
 // ── NÓMINA ──
 function rN(){
-  pushNomina();
   const se=sortedE();const k=wkKey();if(!pagos[k])pagos[k]={};
   let totalSem=0;
   const rows=se.map(emp=>{
@@ -657,8 +555,6 @@ function openHistorial(empId){
     if(!sh)return;
     const totalH=sh.reduce((s,x)=>s+ch(x),0);
     if(totalH===0&&(!pagos[k]||!pagos[k][empId]))return; // skip semanas vacías sin pago
-    const hoy=new Date();hoy.setHours(0,0,0,0);
-    if(new Date(k+'T00:00:00')>hoy&&(!pagos[k]||!pagos[k][empId]))return; // skip semanas futuras copiadas por adelantado, sin pago
     const n=calcNom(emp,sh);
     const pago=(pagos[k]||{})[empId]||{abonado:0,total:n.neto};
     const abonado=pago.abonado||0;
@@ -765,7 +661,7 @@ function calcProp(){
     let eh=0;(sch[emp.name]||[]).forEach(s=>eh+=ch(s));
     const pct=totalH>0?(eh/totalH):0,monto=repartir*pct;
     rows+=`<div class="nr"><div style="display:flex;align-items:center;gap:8px;">
-      <div class="av" style="background:${eColor(emp)};width:26px;height:26px;font-size:.68rem;">${emp.name[0]}</div>
+      <div class="av" style="background:${emp.color};width:26px;height:26px;font-size:.68rem;">${emp.name[0]}</div>
       <div><div class="nl">${emp.name}</div><div class="ns">${fmtH(eh)} · ${(pct*100).toFixed(1)}%</div></div>
     </div><div class="nv">${f$(monto)}</div></div>`;
   });
@@ -783,23 +679,12 @@ function calcProp(){
 function rS(){
   const se=sortedE();
   $('v5').innerHTML=`<div class="card"><div style="font-weight:700;font-size:.84rem;margin-bottom:10px;">🔔 Solicitudes de disponibilidad</div>
-  ${se.map(e=>`<div class="erow"><div class="av" style="background:${eColor(e)};width:28px;height:28px;font-size:.7rem;">${e.name[0]}</div>
+  ${se.map(e=>`<div class="erow"><div class="av" style="background:${e.color};width:28px;height:28px;font-size:.7rem;">${e.name[0]}</div>
   <div style="flex:1;"><div style="font-weight:600;font-size:.82rem;">${e.name}</div></div>
   <span class="badge bpnd">⏳ Pendiente</span></div>`).join('')}</div>`;
 }
 
 // ── EMP MODAL ──
-function renderGrupoBtns(){
-  const chips=GRUPOS.map(g=>`<button class="grupobt" data-id="${g.id}" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;border:2px solid transparent;background:#fff;cursor:pointer;font-size:.76rem;font-weight:600;color:var(--tx);">
-    <span style="width:10px;height:10px;border-radius:50%;background:${g.color};display:inline-block;"></span>${g.name}</button>`).join('');
-  $('grupobtns').innerHTML=chips+`<button class="grupobt" data-id="" style="padding:6px 11px;border-radius:20px;border:2px dashed var(--tb);background:#fff;cursor:pointer;font-size:.76rem;color:var(--mu);">Sin grupo</button>`;
-  document.querySelectorAll('.grupobt').forEach(b=>b.addEventListener('click',()=>{
-    selGrupo=b.dataset.id;
-    document.querySelectorAll('.grupobt').forEach(x=>x.style.border=x.dataset.id?'2px solid transparent':'2px dashed var(--tb)');
-    b.style.border='2px solid var(--td)';
-  }));
-  const sel=document.querySelector('.grupobt[data-id="'+selGrupo+'"]');if(sel)sel.style.border='2px solid var(--td)';
-}
 function openEmpModal(id){
   selR=[];document.querySelectorAll('.role-btn').forEach(b=>b.style.border='1px solid transparent');
   if(id!=null){
@@ -809,24 +694,13 @@ function openEmpModal(id){
     $('efpref').value=e.pref||'Flexible';$('efnotes').value=e.notes||'';toggleTipo();
     selR=[...(e.roles||[])];
     selR.forEach(r=>{const b=document.querySelector('.role-btn[data-r="'+r+'"]');if(b)b.style.border='2px solid var(--td)';});
-    selGrupo=e.grupoId||'';
     $('del-emp-btn').style.display='block';
   }else{
     $('moet').textContent='👤 Nuevo colaborador';$('efid').value='';$('efname').value='';
     $('eftipo').value='fijo';$('efsal').value=SMMLV;$('efvh').value=6000;$('efpref').value='Flexible';$('efnotes').value='';
     toggleTipo();$('del-emp-btn').style.display='none';
-    selGrupo='';
   }
-  $('newgrupo-name').value='';
-  renderGrupoBtns();
   om('mo-emp');
-}
-function crearGrupo(){
-  const name=$('newgrupo-name').value.trim();if(!name){toast('⚠️ Escribe un nombre de grupo');return;}
-  const g={id:String(Date.now()),name,color:COLORS[GRUPOS.length%COLORS.length]};
-  GRUPOS.push(g);fbSaveGrupos();
-  selGrupo=g.id;$('newgrupo-name').value='';
-  renderGrupoBtns();
 }
 function saveEmp(){
   const name=$('efname').value.trim();if(!name){toast('⚠️ Nombre obligatorio');return;}
@@ -834,11 +708,11 @@ function saveEmp(){
   const id=$('efid').value,tipo=$('eftipo').value,sal=+$('efsal').value||SMMLV,vh=+$('efvh').value||6000,pref=$('efpref').value,notes=$('efnotes').value.trim();
   if(id){
     const e=E.find(x=>x.id===id);if(!e)return;const old=e.name;
-    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes,grupoId:selGrupo||''});
+    Object.assign(e,{name,roles:[...selR],tipo,sal,vh,pref,notes});
     if(old!==name){Object.keys(schedules).forEach(k=>{if(schedules[k][old]){schedules[k][name]=schedules[k][old];delete schedules[k][old];fbSaveSch(k);}});}
     fbSaveEmp(e);toast('✅ '+name+' actualizado');
   }else{
-    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,grupoId:selGrupo||'',order:E.length};
+    const nc={id:String(Date.now()),name,roles:[...selR],tipo,sal,vh,pref,notes,color:COLORS[E.length%COLORS.length],order:E.length};
     E.push(nc);Object.keys(schedules).forEach(k=>{schedules[k][name]=Array(7).fill('-');});
     fbSaveEmp(nc);toast('✅ '+name+' agregado');
   }
@@ -872,7 +746,6 @@ $('close-mo-abono').addEventListener('click',()=>cm('mo-abono'));
 $('close-mo-copy').addEventListener('click',()=>cm('mo-copy'));
 $('cfm-cancel').addEventListener('click',()=>cm('cfm'));
 $('save-emp-btn').addEventListener('click',saveEmp);
-$('newgrupo-btn').addEventListener('click',crearGrupo);
 $('del-emp-btn').addEventListener('click',()=>{
   const id=$('efid').value;if(!id)return;const e=E.find(x=>x.id===id);if(!e)return;
   delId=id;$('cfmmsg').textContent='Se eliminará a "'+e.name+'" y todos sus turnos.';om('cfm');
